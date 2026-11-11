@@ -24,7 +24,7 @@ while (count($intervalli) < $round) {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b1020">
-<title>Binary Lights · Open Day Perlasca</title>
+<title>Binary Lights · CodeQuestPerlasca</title>
 <style>
   :root {
     --bg: #0b1020;

@@ -20,7 +20,7 @@ function errore_pagina(int $codice, string $titolo, string $messaggio): never
     $e = static fn(string $s): string => htmlspecialchars($s, ENT_QUOTES);
     echo '<!doctype html><html lang="it"><head><meta charset="utf-8">'
        . '<meta name="viewport" content="width=device-width, initial-scale=1">'
-       . '<title>Diploma · Open Day Perlasca</title>'
+       . '<title>Diploma · CodeQuestPerlasca</title>'
        . '<style>body{margin:0;min-height:100dvh;display:grid;place-items:center;padding:16px;background:#0b1020;color:#e8ecff;'
        . 'font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}main{max-width:380px;background:#141b33;'
        . 'border:1px solid #2a3566;border-radius:16px;padding:24px;display:grid;gap:10px}h1{margin:0;font-size:1.3rem}'

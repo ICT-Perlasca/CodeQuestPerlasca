@@ -38,7 +38,7 @@ $e = static fn(string $s): string => htmlspecialchars($s, ENT_QUOTES);
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b1020">
-<title>Open Day Perlasca · Informatica</title>
+<title>CodeQuestPerlasca · Informatica</title>
 <style>
   :root { --bg:#0b1020; --panel:#141b33; --panel-2:#1c2547; --line:#2a3566; --text:#e8ecff; --muted:#8e98c7;
           --on:#ffd84d; --ok:#3ddc97; --ko:#ff5c7a; --accent:#5cc8ff; --radius:16px; }

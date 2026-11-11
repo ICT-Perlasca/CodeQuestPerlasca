@@ -1,4 +1,4 @@
-# Open Day Informatica – IIS "Giacomo Perlasca"
+# CodeQuestPerlasca – Open Day Informatica, IIS "Giacomo Perlasca"
 
 Web app PHP/MySQL per l'Open Day di Informatica: gli ospiti accedono con un account condiviso, scelgono un nickname e giocano a una serie di minigiochi. Punteggi e classifica sono in tempo reale; a fine percorso si scarica un attestato PDF con QR code.
 

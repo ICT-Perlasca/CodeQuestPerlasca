@@ -20,7 +20,7 @@ $missioni = sessione_attivita()['giochi']['palla_missioni'];
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b1020">
-<title>Modifica il gioco · Open Day Perlasca</title>
+<title>Modifica il gioco · CodeQuestPerlasca</title>
 <style>
   :root {
     --bg:#0b1020; --panel:#141b33; --panel-2:#1c2547; --line:#2a3566; --text:#e8ecff; --muted:#8e98c7;

@@ -22,7 +22,7 @@ $json = json_encode($livelli, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_A
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b1020">
-<title>Duck Coding · Open Day Perlasca</title>
+<title>Duck Coding · CodeQuestPerlasca</title>
 <style>
   :root {
     --bg:#0b1020; --panel:#141b33; --panel-2:#1c2547; --line:#2a3566; --text:#e8ecff; --muted:#8e98c7;

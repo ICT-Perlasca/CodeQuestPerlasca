@@ -36,7 +36,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Open Day Perlasca · Accesso</title>
+<title>CodeQuestPerlasca · Accesso</title>
 <style>
   :root { --bg:#0b1020; --panel:#141b33; --line:#2a3566; --text:#e8ecff; --muted:#8e98c7; --accent:#5cc8ff; --ko:#ff5c7a; }
   * { box-sizing:border-box; }

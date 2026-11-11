@@ -17,7 +17,7 @@ $e = static fn(string $s): string => htmlspecialchars($s, ENT_QUOTES);
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#0b1020">
-<title>Classifica Live · Open Day Perlasca</title>
+<title>Classifica Live · CodeQuestPerlasca</title>
 <style>
   :root {
     --bg: #0b1020; --panel: #141b33; --panel-2: #1c2547; --line: #2a3566;

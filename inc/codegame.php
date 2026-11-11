@@ -26,7 +26,7 @@ const CODEGAME_MIN_MS = 2000;      // sotto i 2 secondi non e' umano
 
 // TEMPORANEO: true = tutti i livelli aperti senza risolvere i precedenti (per provarli).
 // Rimettere a false prima dell'Open Day!
-const CODEGAME_SBLOCCA_TUTTO = true;
+const CODEGAME_SBLOCCA_TUTTO = false;
 
 function codegame_livelli(): array
 {
