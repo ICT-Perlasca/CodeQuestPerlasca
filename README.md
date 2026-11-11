@@ -42,8 +42,8 @@ Nessuna dipendenza da CDN: l'evento può girare in LAN senza internet.
 2. **Non** caricare `config.local.php`.
 3. Importa `schema.sql`. Su DB già esistenti le modifiche vanno applicate a mano (`ALTER`/`INSERT`): `CREATE TABLE IF NOT EXISTS` non aggiorna le tabelle. La tabella `registro` è permanente e non va mai cancellata.
 4. Imposta la scadenza della sessione alla data dell'Open Day.
-5. In `inc/codegame.php` verifica che `CODEGAME_SBLOCCA_TUTTO` sia `false`.
 
 ## Note
 
 - La password dell'account ospite è in `inc/config.php`: tieni il repository privato.
+- In `inc/codegame.php` verifica che `CODEGAME_SBLOCCA_TUTTO` sia `false`.
