@@ -9,14 +9,18 @@ Web app PHP/MySQL per l'Open Day di Informatica: gli ospiti accedono con un acco
 - Minigiochi: **Duck Coding** (blocchi Blockly, 28 livelli), **Binary Lights**, **Porte logiche**, **Modifica il gioco**, **Hack the Web(site)**
 - Attestato PDF (FPDF) con QR valido 10 minuti; i primi 3 in classifica ricevono anche un certificato di merito
 - Registro permanente (nomi, arrivi per turno, numero attestato, export CSV)
-- Pannello `admin.php`: sessione (Open Day / Laboratori), statistiche per gioco, reset
+- Pannello `admin/` (pagine Panoramica, Sessione, Giochi, Partecipanti, Registro, Sistema): sessione (Open Day / Laboratori), statistiche per gioco, reset
+
+## Documentazione
+
+[Guida per docenti e tutor](https://claude.ai/artifact/5jzNq4BeBaHSHD2UWiVFzA): come preparare e gestire la giornata dal pannello admin.
 
 ## Struttura
 
 | Percorso | Contenuto |
 |---|---|
 | `index.php`, `login.php`, `classifica.php` | pagine pubbliche |
-| `admin.php` | pannello di amministrazione |
+| `admin/` | pannello di amministrazione (`admin.php` rimanda qui) |
 | `diploma.php`, `diploma_pdf.php` | attestato |
 | `giochi/` | i minigiochi |
 | `api/` | endpoint JSON |
