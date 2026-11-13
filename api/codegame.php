@@ -30,6 +30,10 @@ if (!uuid_valido($uuid) || ($_SESSION['uuid'] ?? null) !== $uuid) {
 }
 session_write_close();
 
+if (stato_gioco('paperelle_coding') !== 'attivo') {
+    json_errore(403, 'Questo gioco è stato chiuso dai docenti');
+}
+
 $livelli = codegame_livelli_attivi(); // Open Day: solo i primi livelli, laboratorio: tutti
 $pdo = db();
 $st = $pdo->prepare('SELECT id FROM partecipanti WHERE uuid = ?');

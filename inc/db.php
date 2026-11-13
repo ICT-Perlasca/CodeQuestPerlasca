@@ -133,6 +133,36 @@ const GIOCHI = [
     'hack_website'     => ['icona' => '🕵️', 'pagina' => 'giochi/hack-website.php',  'livelli' => 'hack_livelli',   'per' => 100, 'unita' => 'livelli'],
 ];
 
+/**
+ * Stato di un gioco, impostato da admin.php (chiave `gioco_<codice>` in `impostazioni`,
+ * nessuna colonna nuova): 'attivo' (default), 'disabilitato' (card grigia, non si gioca
+ * e non si salvano punti) o 'nascosto' (sparisce dalla home e non si gioca).
+ */
+const STATI_GIOCO = ['attivo' => 'Attivo', 'disabilitato' => 'Disabilitato (visibile ma bloccato)', 'nascosto' => 'Nascosto (non si vede)'];
+
+function stato_gioco(string $modulo): string
+{
+    static $stati = null;
+    $stati ??= db()->query("SELECT chiave, valore FROM impostazioni WHERE chiave LIKE 'gioco\\_%'")->fetchAll(PDO::FETCH_KEY_PAIR);
+    $v = $stati["gioco_$modulo"] ?? 'attivo';
+    return isset(STATI_GIOCO[$v]) ? $v : 'attivo';
+}
+
+/** Da chiamare in cima alle pagine dei giochi: se non e' attivo mostra un avviso e si ferma. */
+function richiedi_gioco_attivo(string $modulo): void
+{
+    if (stato_gioco($modulo) === 'attivo') {
+        return;
+    }
+    http_response_code(403);
+    echo '<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">'
+       . '<title>Gioco non disponibile</title></head>'
+       . '<body style="margin:0;min-height:100dvh;display:grid;place-items:center;background:#0b1020;color:#e8ecff;font:16px system-ui,sans-serif;text-align:center;padding:20px">'
+       . '<div><h1>Questo gioco non è disponibile</h1><p style="color:#8e98c7">Per ora è stato chiuso dai docenti.</p>'
+       . '<p><a href="../index.php" style="color:#5cc8ff">← Torna alle sfide</a></p></div></body></html>';
+    exit;
+}
+
 /** Quanti livelli/round/missioni di un gioco si giocano nella sessione in corso. */
 function livelli_sessione(string $modulo): int
 {

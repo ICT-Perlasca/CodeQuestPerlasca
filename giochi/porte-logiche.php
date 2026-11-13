@@ -12,6 +12,8 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../inc/db.php';
 
+richiedi_gioco_attivo('porte_logiche');
+
 $livelli = sessione_attivita()['giochi']['porte_livelli']; // numeri dei livelli (da 1) di questa sessione
 ?>
 <!doctype html>

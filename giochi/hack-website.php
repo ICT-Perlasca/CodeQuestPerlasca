@@ -13,6 +13,8 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../inc/db.php';
 
+richiedi_gioco_attivo('hack_website');
+
 $livelli = sessione_attivita()['giochi']['hack_livelli'];
 ?>
 <!doctype html>

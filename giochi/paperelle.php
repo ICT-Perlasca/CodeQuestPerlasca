@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../inc/codegame.php';
 
+richiedi_gioco_attivo('paperelle_coding');
+
 $livelli = [];
 foreach (codegame_livelli_attivi() as $n => $l) { // quanti dipende dalla sessione (admin.php)
     unset($l['rif']); // il tempo di riferimento resta sul server

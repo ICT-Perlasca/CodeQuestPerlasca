@@ -14,7 +14,7 @@ if (empty($_SESSION['ospite'])) {
 
 $profilo = null;
 if (isset($_SESSION['uuid'])) {
-    $st = db()->prepare('SELECT uuid, nickname, avatar, punti_totali FROM partecipanti WHERE uuid = ?');
+    $st = db()->prepare('SELECT id, uuid, nickname, avatar, punti_totali, nascosto, updated_at FROM partecipanti WHERE uuid = ?');
     $st->execute([$_SESSION['uuid']]);
     $profilo = $st->fetch() ?: null;
     if ($profilo === null) {
@@ -24,12 +24,54 @@ if (isset($_SESSION['uuid'])) {
 
 $giochi = sessione_attivita()['giochi']; // Open Day corto, laboratorio lungo (admin.php)
 $percorso = [
-  ['icona' => '🔢', 'titolo' => 'Binary Lights',         'desc' => "Componi numeri con 8 bit in {$giochi['binary_round']} round", 'href' => 'giochi/binary-lights.php'],
-  ['icona' => '💡', 'titolo' => 'Porte logiche',         'desc' => 'AND, OR, NOT: accendi la lampadina come ragiona un computer · ' . count($giochi['porte_livelli']) . ' livelli', 'href' => 'giochi/porte-logiche.php'],
-  ['icona' => '🛠️', 'titolo' => 'Modifica il gioco',     'desc' => "Cambia gravità, velocità e colori nel codice: {$giochi['palla_missioni']} missioni", 'href' => 'giochi/modifica-gioco.php'],
-    ['icona' => '🦆', 'titolo' => 'Duck Coding',           'desc' => "Programma a blocchi: {$giochi['duck_livelli']} livelli per portare le paperelle allo stagno", 'href' => 'giochi/paperelle.php'],
-  ['icona' => '🕵️', 'titolo' => 'Hack the Web(site)',    'desc' => 'Usa "Ispeziona" come un hacker per liberare le paperelle · ' . count($giochi['hack_livelli']) . ' livelli', 'href' => 'giochi/hack-website.php'],
+  ['codice' => 'paperelle_coding', 'icona' => '🦆', 'colore' => '#ffd84d', 'titolo' => 'Duck Coding',       'desc' => 'Programma a blocchi e porta le paperelle allo stagno', 'href' => 'giochi/paperelle.php'],
+  ['codice' => 'binary_lights',    'icona' => '🔢', 'colore' => '#5cc8ff', 'titolo' => 'Binary Lights',     'desc' => 'Componi numeri con 8 bit',                           'href' => 'giochi/binary-lights.php'],
+  ['codice' => 'porte_logiche',    'icona' => '💡', 'colore' => '#b48cff', 'titolo' => 'Porte logiche',     'desc' => 'AND, OR, NOT: accendi la lampadina',                 'href' => 'giochi/porte-logiche.php'],
+  ['codice' => 'modifica_gioco',   'icona' => '🛠️', 'colore' => '#3ddc97', 'titolo' => 'Modifica il gioco', 'desc' => 'Cambia gravità e colori nel codice',                'href' => 'giochi/modifica-gioco.php'],
+  ['codice' => 'hack_website',     'icona' => '🕵️', 'colore' => '#ff5c7a', 'titolo' => 'Hack the Web(site)', 'desc' => 'Usa "Ispeziona" come un hacker per liberare le paperelle', 'href' => 'giochi/hack-website.php'],
 ];
+
+// progressi del ragazzo e posizione in classifica (solo se ha gia' un profilo)
+$fatti = [];
+$posizione = null;
+if ($profilo) {
+    $pdo = db();
+    $st = $pdo->prepare('SELECT modulo, punti FROM punteggi WHERE partecipante_id = ?');
+    $st->execute([$profilo['id']]);
+    $puntiGioco = $st->fetchAll(PDO::FETCH_KEY_PAIR);
+    $st = $pdo->prepare('SELECT COUNT(*) FROM codegame_tempi WHERE partecipante_id = ? AND ms IS NOT NULL');
+    $st->execute([$profilo['id']]);
+    $duckFatti = (int) $st->fetchColumn();
+
+    if ((int) $profilo['punti_totali'] > 0 && !(int) $profilo['nascosto']) {
+        $st = $pdo->prepare(
+            'SELECT COUNT(*) + 1 FROM partecipanti WHERE nascosto = 0 AND punti_totali > 0 AND (punti_totali > ?
+               OR (punti_totali = ? AND (updated_at < ? OR (updated_at = ? AND id < ?))))'
+        );
+        $st->execute([$profilo['punti_totali'], $profilo['punti_totali'], $profilo['updated_at'], $profilo['updated_at'], $profilo['id']]);
+        $posizione = (int) $st->fetchColumn();
+    }
+}
+
+// filtra i giochi nascosti, segna quelli disabilitati, calcola totale e fatti di ognuno
+$percorso = array_values(array_filter($percorso, static fn(array $t): bool => stato_gioco($t['codice']) !== 'nascosto'));
+$completate = 0;
+foreach ($percorso as &$t) {
+    $t['totale'] = livelli_sessione($t['codice']);
+    $t['unita'] = ['binary_lights' => 'round', 'modifica_gioco' => 'missioni'][$t['codice']] ?? 'livelli';
+    $t['chiuso'] = stato_gioco($t['codice']) === 'disabilitato';
+    $t['fatti'] = match ($t['codice']) {
+        'paperelle_coding' => min($t['totale'], $duckFatti ?? 0),
+        'binary_lights'    => ($puntiGioco[$t['codice']] ?? 0) > 0 ? $t['totale'] : 0, // i punti dei round non sono tutti da 300: conta "giocato"
+        default            => min($t['totale'], intdiv((int) ($puntiGioco[$t['codice']] ?? 0), GIOCHI[$t['codice']]['per'])),
+    };
+    $t['completo'] = $t['totale'] > 0 && $t['fatti'] >= $t['totale'];
+    $t['iniziato'] = $t['fatti'] > 0;
+    $completate += $t['completo'] ? 1 : 0;
+}
+unset($t);
+$attive = count(array_filter($percorso, static fn(array $t): bool => !$t['chiuso']));
+$percento = $attive > 0 ? (int) round(100 * $completate / $attive) : 0;
 $e = static fn(string $s): string => htmlspecialchars($s, ENT_QUOTES);
 ?>
 <!doctype html>
@@ -80,21 +122,43 @@ $e = static fn(string $s): string => htmlspecialchars($s, ENT_QUOTES);
   .profilo .avatar { width:52px; height:52px; font-size:2rem; }
   .profilo b { display:block; font-size:1.15rem; }
   .punti { margin-left:auto; font-family:ui-monospace, Menlo, Consolas, monospace; color:var(--on); font-weight:800; font-size:1.2rem; white-space:nowrap; }
-  .tappe { list-style:none; margin:0; padding:0; display:grid; gap:10px; }
-  .tappa { display:flex; align-items:center; gap:14px; padding:16px; border-radius:var(--radius); background:var(--panel);
-           border:1px solid var(--line); color:inherit; text-decoration:none; }
-  a.tappa:active { transform:scale(.98); }
-  .tappa .n { flex:none; width:40px; height:40px; border-radius:50%; display:grid; place-items:center; font-weight:800; background:var(--accent); color:#04121c; }
-  .tappa b { display:block; }
-  .tappa span.desc { color:var(--muted); font-size:.9rem; }
-  .tappa.off { opacity:.5; }
-  .tappa.off .n { background:var(--panel-2); color:var(--muted); }
-  .tappa .tag { margin-left:auto; font-size:.75rem; color:var(--muted); border:1px solid var(--line); border-radius:999px; padding:2px 8px; white-space:nowrap; }
+  .hero { position:relative; overflow:hidden; border-radius:22px; padding:20px; border:1px solid var(--line); background:linear-gradient(135deg, #1b2a6b, #141b33 60%); display:grid; gap:14px; }
+  .hero::before { content:"01001000 01000001 01000011 01001011"; position:absolute; right:-10px; top:6px; width:120px; word-break:break-all; line-height:1.6;
+                  font:700 .7rem ui-monospace, monospace; color:#5cc8ff22; pointer-events:none; }
+  .kicker { font-size:.72rem; letter-spacing:.12em; text-transform:uppercase; color:var(--accent); font-weight:700; }
+  .hero .profilo .avatar { width:68px; height:68px; font-size:2.4rem; border:2px solid var(--accent); border-radius:20px; }
+  .hero .profilo b { font-size:1.3rem; }
+  .pt { margin-left:auto; text-align:right; position:relative; }
+  .pt strong { display:block; font:800 1.9rem ui-monospace, Menlo, Consolas, monospace; color:var(--on); line-height:1; }
+  .pt span { font-size:.75rem; color:var(--muted); }
+  .bar { height:10px; border-radius:99px; background:var(--bg); overflow:hidden; border:1px solid var(--line); }
+  .bar i { display:block; height:100%; background:linear-gradient(90deg, var(--accent), var(--ok)); border-radius:99px; transition:width .4s; }
+  .avanzamento p { font-size:.82rem; margin-top:6px; }
+  .griglia-giochi { list-style:none; margin:0; padding:0; display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .griglia-giochi li:last-child:nth-child(odd) { grid-column:1 / -1; }
+  .gioco { position:relative; display:grid; gap:8px; align-content:start; height:100%; padding:16px; border-radius:var(--radius); background:var(--panel);
+           border:1px solid var(--line); color:inherit; text-decoration:none; overflow:hidden; transition:transform .12s, border-color .15s; }
+  a.gioco:hover { border-color:var(--c); transform:translateY(-2px); }
+  a.gioco:active { transform:scale(.97); }
+  .gioco::after { content:""; position:absolute; inset:auto -30% -60% -30%; height:100%; background:radial-gradient(closest-side, var(--c), transparent); opacity:.18; pointer-events:none; }
+  .gioco .ico { width:52px; height:52px; border-radius:16px; display:grid; place-items:center; font-size:1.7rem;
+                background:color-mix(in srgb, var(--c) 22%, transparent); border:1px solid color-mix(in srgb, var(--c) 55%, transparent); }
+  .gioco b { font-size:1rem; }
+  .gioco small { color:var(--muted); font-size:.8rem; line-height:1.3; }
+  .gioco .stato { display:flex; justify-content:space-between; align-items:center; gap:6px; font-size:.75rem; color:var(--muted); margin-top:4px; position:relative; }
+  .chip { border-radius:99px; padding:2px 9px; border:1px solid var(--line); font-weight:700; white-space:nowrap; }
+  .chip.ok { color:var(--ok); border-color:#3ddc9755; }
+  .chip.corso { color:var(--accent); border-color:#5cc8ff55; }
+  .gioco.off { opacity:.45; filter:grayscale(.8); }
+  .diploma { display:flex; align-items:center; gap:14px; padding:18px; border-radius:var(--radius); text-decoration:none; color:#1a1300; font-weight:700;
+             background:linear-gradient(135deg, #ffd84d, #ffb347); }
+  .diploma .i { font-size:2rem; }
+  .diploma small { display:block; font-weight:500; opacity:.75; }
 </style>
 </head>
 <body>
 <main class="app">
-  <header>
+  <header id="intestazione" <?= $profilo ? 'hidden' : '' ?>>
     <h1><?= $e(sessione_attivita()['etichetta']) ?> · Informatica e Telecomunicazioni</h1>
     <p>IIS "Giacomo Perlasca"</p>
   </header>
@@ -118,43 +182,50 @@ $e = static fn(string $s): string => htmlspecialchars($s, ENT_QUOTES);
 
   <!-- DASHBOARD -->
   <section id="dashboard" <?= $profilo ? '' : 'hidden' ?> style="display:grid; gap:16px">
-    <div class="card" style="gap:12px">
+    <div class="hero">
+      <div class="kicker"><?= $e(sessione_attivita()['etichetta']) ?> · IIS Perlasca</div>
       <div class="profilo">
         <button class="avatar avatar-btn" type="button" id="dash-avatar" aria-expanded="false" aria-controls="dash-griglia" aria-label="Cambia avatar"></button>
         <div><b id="dash-nick"><?= $e($profilo['nickname'] ?? '') ?></b><p>Junior Hacker in addestramento</p></div>
-        <span class="punti"><span id="dash-punti"><?= (int) ($profilo['punti_totali'] ?? 0) ?></span> pt</span>
+        <div class="pt"><strong id="dash-punti"><?= (int) ($profilo['punti_totali'] ?? 0) ?></strong><span>punti</span></div>
       </div>
       <div class="avatar-griglia" id="dash-griglia" role="radiogroup" aria-label="Avatar" hidden></div>
       <p class="errore" id="dash-errore" role="alert" hidden></p>
+      <?php if ($attive > 0): ?>
+        <div class="avanzamento">
+          <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="<?= $percento ?>"><i style="width:<?= $percento ?>%"></i></div>
+          <p><?= $completate ?> sfid<?= $completate === 1 ? 'a' : 'e' ?> su <?= $attive ?> completat<?= $completate === 1 ? 'a' : 'e' ?><?= $posizione ? ' · 🏆 sei ' . $posizione . '° in classifica' : '' ?></p>
+        </div>
+      <?php endif; ?>
     </div>
 
     <h2>Scegli la tua sfida</h2>
-    <p>Gioca nell'ordine che preferisci: ogni sfida superata ti fa salire in classifica.</p>
-    <ul class="tappe">
-      <?php foreach ($percorso as $t): ?>
+    <ul class="griglia-giochi">
+      <?php foreach ($percorso as $t):
+        $tag = $t['chiuso'] ? 'div' : 'a';
+        $attr = $t['chiuso'] ? 'aria-disabled="true"' : 'href="' . $e($t['href']) . '"'; ?>
         <li>
-          <?php if ($t['href']): ?>
-            <a class="tappa" href="<?= $e($t['href']) ?>">
-          <?php else: ?>
-            <div class="tappa off" aria-disabled="true">
-          <?php endif; ?>
-              <span class="n"><?= $t['icona'] ?></span>
-              <span><b><?= $e($t['titolo']) ?></b><span class="desc"><?= $e($t['desc']) ?></span></span>
-              <?php if (!$t['href']): ?><span class="tag">in arrivo</span><?php endif; ?>
-          <?= $t['href'] ? '</a>' : '</div>' ?>
+          <<?= $tag ?> class="gioco<?= $t['chiuso'] ? ' off' : '' ?>" style="--c:<?= $e($t['colore']) ?>" <?= $attr ?>>
+            <span class="ico"><?= $t['icona'] ?></span>
+            <b><?= $e($t['titolo']) ?></b>
+            <small><?= $e($t['desc']) ?></small>
+            <span class="stato">
+              <span><?= (int) $t['totale'] ?> <?= $e($t['unita']) ?></span>
+              <?php if ($t['chiuso']): ?><span class="chip">chiuso</span>
+              <?php elseif ($t['codice'] === 'binary_lights' && $t['iniziato']): ?><span class="chip ok">✓ giocato</span>
+              <?php elseif ($t['completo']): ?><span class="chip ok">✓ <?= (int) $t['fatti'] ?>/<?= (int) $t['totale'] ?></span>
+              <?php elseif ($t['iniziato'] && $t['codice'] !== 'binary_lights'): ?><span class="chip corso"><?= (int) $t['fatti'] ?>/<?= (int) $t['totale'] ?></span>
+              <?php else: ?><span class="chip">da fare</span><?php endif; ?>
+            </span>
+          </<?= $tag ?>>
         </li>
       <?php endforeach; ?>
     </ul>
 
-    <h2>Il tuo diploma</h2>
-    <ol class="tappe">
-      <li>
-        <a class="tappa" href="diploma.php">
-          <span class="n">🎓</span>
-          <span><b>Diploma &amp; Classifica</b><span class="desc">Il tuo attestato Junior Hacker</span></span>
-        </a>
-      </li>
-    </ol>
+    <a class="diploma" href="diploma.php">
+      <span class="i">🎓</span>
+      <span>Il tuo diploma &amp; la classifica<small>Scarica l'attestato Junior Hacker</small></span>
+    </a>
   </section>
 </main>
 
@@ -256,6 +327,7 @@ function mostraDashboard(p) {
   $('dash-nick').textContent = p.nickname;
   $('dash-punti').textContent = p.punti_totali;
   $('onboarding').hidden = true;
+  $('intestazione').hidden = true;
   $('dashboard').hidden = false;
 }
 

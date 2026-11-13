@@ -8,6 +8,8 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../inc/db.php';
 
+richiedi_gioco_attivo('binary_lights');
+
 $round = sessione_attivita()['giochi']['binary_round'];
 // intervallo del numero bersaglio per ogni round: si parte dai 4 bit bassi
 $intervalli = $round <= 5

@@ -44,6 +44,10 @@ if ($ora - ($_SESSION['ultimo_salvataggio'][$modulo] ?? 0) < INTERVALLO_MIN_SECO
 $_SESSION['ultimo_salvataggio'][$modulo] = $ora;
 session_write_close(); // libera il lock della sessione prima di toccare il DB
 
+if (isset(GIOCHI[$modulo]) && stato_gioco($modulo) !== 'attivo') {
+    json_errore(403, 'Questo gioco è stato chiuso dai docenti');
+}
+
 $pdo = db();
 $pdo->beginTransaction();
 

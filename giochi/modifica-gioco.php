@@ -12,6 +12,8 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../inc/db.php';
 
+richiedi_gioco_attivo('modifica_gioco');
+
 $missioni = sessione_attivita()['giochi']['palla_missioni'];
 ?>
 <!doctype html>
