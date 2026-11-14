@@ -154,6 +154,27 @@ $e = static fn(string $s): string => htmlspecialchars($s, ENT_QUOTES);
              background:linear-gradient(135deg, #ffd84d, #ffb347); }
   .diploma .i { font-size:2rem; }
   .diploma small { display:block; font-weight:500; opacity:.75; }
+  .titolo-sfide { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .btn-aiuto { font:inherit; font-size:.85rem; font-weight:700; color:var(--accent); background:transparent; border:1px solid var(--line); border-radius:99px; padding:5px 12px; cursor:pointer; touch-action:manipulation; }
+  .intro { position:fixed; inset:0; z-index:50; display:grid; place-items:center; padding:16px; background:rgba(5,8,20,.82); }
+  .intro-box { width:100%; max-width:460px; max-height:calc(100dvh - 32px); overflow-y:auto; border-radius:22px; border:1px solid var(--line); padding:22px 20px 18px;
+               background:linear-gradient(160deg, #1b2a6b, #141b33 55%); display:grid; gap:16px; }
+  .slide { display:none; gap:12px; }
+  .slide.on { display:grid; }
+  .slide .grande { font-size:2.6rem; line-height:1; }
+  .slide h2 { font-size:1.35rem; }
+  .slide p { color:var(--text); }
+  .passi { list-style:none; margin:0; padding:0; display:grid; gap:10px; }
+  .passi li { display:flex; gap:12px; align-items:flex-start; }
+  .passi .n { flex:none; width:34px; height:34px; border-radius:50%; display:grid; place-items:center; background:var(--panel-2); border:1px solid var(--line); font-size:1.1rem; }
+  .passi b { display:block; }
+  .passi span.t { color:var(--muted); font-size:.88rem; }
+  .intro-nav { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+  .puntini { display:flex; gap:7px; }
+  .puntini i { width:9px; height:9px; border-radius:50%; background:var(--line); }
+  .puntini i.on { background:var(--accent); }
+  .intro-nav .btn { padding:11px 18px; font-size:1rem; }
+  .intro-salta { background:transparent; border:0; color:var(--muted); font:inherit; font-size:.85rem; cursor:pointer; padding:6px; }
 </style>
 </head>
 <body>
@@ -199,7 +220,7 @@ $e = static fn(string $s): string => htmlspecialchars($s, ENT_QUOTES);
       <?php endif; ?>
     </div>
 
-    <h2>Scegli la tua sfida</h2>
+    <div class="titolo-sfide"><h2>Scegli la tua sfida</h2><button type="button" class="btn-aiuto" id="btn-intro">❓ Come funziona</button></div>
     <ul class="griglia-giochi">
       <?php foreach ($percorso as $t):
         $tag = $t['chiuso'] ? 'div' : 'a';
@@ -228,6 +249,39 @@ $e = static fn(string $s): string => htmlspecialchars($s, ENT_QUOTES);
     </a>
   </section>
 </main>
+
+<!-- INTRODUZIONE: due slide che spiegano come funzionano le attivita' -->
+<div class="intro" id="intro" role="dialog" aria-modal="true" aria-label="Come funziona" hidden>
+  <div class="intro-box">
+    <section class="slide on">
+      <div class="grande">🕹️</div>
+      <h2>Benvenuto, Junior Hacker!</h2>
+      <p>Qui trovi delle sfide a tema informatica. Si gioca dal telefono, da solo o con un amico, <b>nell'ordine che preferisci</b>.</p>
+      <ul class="passi">
+        <li><span class="n">1</span><span><b>Scegli una sfida</b><span class="t">Tocca una card nella pagina iniziale.</span></span></li>
+        <li><span class="n">2</span><span><b>Supera i livelli</b><span class="t">Ogni livello superato ti dà dei punti. Se sbagli, riprova: nessuno ti toglie niente.</span></span></li>
+        <li><span class="n">3</span><span><b>Sali in classifica</b><span class="t">Compare solo il tuo nickname: il nome vero lo scrivi soltanto per il diploma.</span></span></li>
+      </ul>
+    </section>
+    <section class="slide">
+      <div class="grande">🎯</div>
+      <h2>Le sfide</h2>
+      <ul class="passi">
+        <li><span class="n">🦆</span><span><b>Duck Coding</b><span class="t">Trascina i blocchi per far arrivare la paperella allo stagno.</span></span></li>
+        <li><span class="n">🔢</span><span><b>Binary Lights</b><span class="t">Accendi gli 8 bit per comporre il numero richiesto.</span></span></li>
+        <li><span class="n">💡</span><span><b>Porte logiche</b><span class="t">Collega interruttori e porte per accendere la lampadina.</span></span></li>
+        <li><span class="n">🛠️</span><span><b>Modifica il gioco</b><span class="t">Cambia i numeri nel codice e guarda la palla reagire.</span></span></li>
+        <li><span class="n">🕵️</span><span><b>Hack the Web(site)</b><span class="t">Usa "Ispeziona" come un hacker per liberare le paperelle.</span></span></li>
+      </ul>
+      <p>Alla fine scarichi il tuo <b>diploma</b> dalla pagina iniziale. 🎓</p>
+    </section>
+    <div class="intro-nav">
+      <button type="button" class="intro-salta" id="intro-salta">Salta</button>
+      <div class="puntini" aria-hidden="true"><i class="on"></i><i></i></div>
+      <button type="button" class="btn" id="intro-avanti">Avanti</button>
+    </div>
+  </div>
+</div>
 
 <script src="assets/js/avatar.js"></script>
 <script>
@@ -353,7 +407,7 @@ $('onboarding').addEventListener('submit', async (ev) => {
   $('btn-entra').disabled = true;
   try {
     const p = await registra(uuid, $('nickname').value.trim(), avatar);
-    if (p) mostraDashboard(p);
+    if (p) { mostraDashboard(p); introSeNuovo(); }
   } catch (err) {
     $('errore').textContent = err.message;
   } finally {
@@ -378,9 +432,51 @@ creaSceltaAvatar($('dash-avatar'), $('dash-griglia'), () => profilo && profilo.a
   }
 });
 
+
+/* ---------- introduzione a due slide ---------- */
+const intro = $('intro');
+const slide = intro.querySelectorAll('.slide');
+const puntini = intro.querySelectorAll('.puntini i');
+let slideAttuale = 0;
+
+function mostraSlide(n) {
+  slideAttuale = n;
+  slide.forEach((el, i) => el.classList.toggle('on', i === n));
+  puntini.forEach((el, i) => el.classList.toggle('on', i === n));
+  $('intro-avanti').textContent = n === slide.length - 1 ? 'Inizia!' : 'Avanti';
+  $('intro-salta').hidden = n === slide.length - 1;
+}
+function apriIntro() {
+  mostraSlide(0);
+  intro.hidden = false;
+  $('intro-avanti').focus();
+}
+function chiudiIntro() {
+  intro.hidden = true;
+  storage.set('od_intro', '1');
+}
+$('intro-avanti').addEventListener('click', () => {
+  if (slideAttuale < slide.length - 1) mostraSlide(slideAttuale + 1); else chiudiIntro();
+});
+$('intro-salta').addEventListener('click', chiudiIntro);
+$('btn-intro').addEventListener('click', apriIntro);
+document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && !intro.hidden) chiudiIntro(); });
+let tocco = null; // scorrimento col dito tra le due slide
+intro.addEventListener('touchstart', (ev) => { tocco = ev.touches[0].clientX; }, { passive: true });
+intro.addEventListener('touchend', (ev) => {
+  if (tocco === null) return;
+  const dx = ev.changedTouches[0].clientX - tocco;
+  tocco = null;
+  if (dx < -50 && slideAttuale < slide.length - 1) mostraSlide(slideAttuale + 1);
+  if (dx > 50 && slideAttuale > 0) mostraSlide(slideAttuale - 1);
+});
+// la prima volta compare da sola, appena c'e' un profilo
+const introSeNuovo = () => { if (!storage.get('od_intro')) apriIntro(); };
+
 if (profiloServer) {
   if (!storage.get('od_uuid')) storage.set('od_uuid', profiloServer.uuid);
   mostraDashboard(profiloServer);
+  introSeNuovo();
 } else {
   $('nickname').value = storage.get('od_nick') || '';
   mostraAvatar();

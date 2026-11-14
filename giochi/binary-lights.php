@@ -217,6 +217,7 @@ while (count($intervalli) < $round) {
     <a href="../index.php" aria-label="Torna alla mappa">&larr; Mappa</a>
     <h1>Binary <span>Lights</span></h1>
     <div class="hud" aria-live="polite">
+      <button type="button" class="btn-guida" id="btn-guida" aria-label="Guida: come si gioca" title="Come si gioca">?</button>
       <span class="pill">R <b id="hud-round">0</b>/<?= $round ?></span>
       <span class="pill"><b id="hud-punti">0</b> pt</span>
     </div>
@@ -282,6 +283,7 @@ while (count($intervalli) < $round) {
 
 <div class="toast" id="toast" role="status"></div>
 
+<script src="../assets/js/guida.js"></script>
 <script>
 'use strict';
 
@@ -317,6 +319,33 @@ const stato = {
   tempoMigliore: Infinity,
   timeout: 0,
 };
+
+
+/* ---------- guida introduttiva (compare la prima volta, poi col pulsante ?) ---------- */
+Guida.crea({
+  chiave: 'binary_lights',
+  bottone: document.getElementById('btn-guida'),
+  slide: [
+    { html: `<div class="grande">💡</div><h2>Il computer conosce solo due cose</h2>
+      <p>Acceso (<b>1</b>) e spento (<b>0</b>). Con tante lampadine accese e spente riesce a scrivere qualsiasi numero.</p>
+      <p>Un <b>byte</b> sono 8 lampadine in fila. Ognuna vale <b>il doppio</b> di quella alla sua destra: 1, 2, 4, 8, 16, 32, 64, 128.</p>`,
+    },
+    { html: `<h2>Prova tu!</h2>
+      <p>Tocca le lampadine: il numero è la <b>somma dei valori di quelle accese</b>.</p>
+      <div class="guida-prova" data-demo="byte"></div>
+      <p class="muto">Suggerimento: 5 = 4 + 1.</p>`,
+      avvia: (el) => Guida.demoByte(el, 5, '✔ Bravo! 4 + 1 = 5'),
+    },
+    { html: `<div class="grande">⏱️</div><h2>Come si gioca</h2>
+      <ol>
+        <li>Leggi il <b>numero</b> da comporre.</li>
+        <li>Accendi le lampadine giuste <b>prima che scada il tempo</b>.</li>
+        <li>Più sei veloce, più punti fai.</li>
+      </ol>
+      <p class="muto"><?= (int) $round ?> round, ogni volta con numeri più difficili. Puoi rigiocare per battere il tuo record.</p>`,
+    },
+  ],
+});
 
 /* ---------- storage sicuro (puo' fallire in navigazione privata) ---------- */
 const storage = {

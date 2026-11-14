@@ -120,6 +120,7 @@ $livelli = sessione_attivita()['giochi']['porte_livelli']; // numeri dei livelli
   <a href="../index.php">← <?= htmlspecialchars(sessione_attivita()['etichetta'], ENT_QUOTES) ?></a>
   <h1>💡 Porte <span>logiche</span></h1>
   <nav class="livelli" id="livelli" aria-label="Livelli"></nav>
+  <button type="button" class="btn-guida" id="btn-guida" aria-label="Guida: come si gioca" title="Come si gioca">?</button>
   <span class="pill"><b id="hud-punti">0</b> pt</span>
 </header>
 
@@ -160,6 +161,7 @@ $livelli = sessione_attivita()['giochi']['porte_livelli']; // numeri dei livelli
 <div class="toast" id="toast" role="status"></div>
 
 <script src="../assets/js/porte-logiche.js"></script>
+<script src="../assets/js/guida.js"></script>
 <script>
 'use strict';
 
@@ -174,6 +176,32 @@ const MODULO = 'porte_logiche';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+/* ---------- guida introduttiva (compare la prima volta, poi col pulsante ?) ---------- */
+// non spiega le singole porte: nei primi livelli si scoprono giocando
+Guida.crea({
+  chiave: 'porte_logiche',
+  bottone: document.getElementById('btn-guida'),
+  slide: [
+    { html: `<div class="grande">🔌</div><h2>Interruttori e corrente</h2>
+      <p>Ogni interruttore è un <b>bit</b>: <b>1</b> = passa corrente, <b>0</b> = niente corrente. Se la corrente arriva alla lampadina, si accende.</p>
+      <div class="guida-prova" data-demo="interruttore"></div>`,
+      avvia: (el) => Guida.demoInterruttore(el),
+    },
+    { html: `<div class="grande">🧩</div><h2>Le porte decidono</h2>
+      <p>Nei circuiti, tra gli interruttori e la lampadina ci sono le <b>porte</b>: piccoli pezzi che lasciano passare la corrente oppure la fermano, secondo una regola.</p>
+      <p>All'inizio non ti diciamo le regole: <b>prova gli interruttori e scoprile tu</b>. Dopo averle scoperte le trovi scritte in "Le regole delle porte".</p>`,
+    },
+    { html: `<div class="grande">🎯</div><h2>Come si gioca</h2>
+      <ol>
+        <li><b>Tocca gli interruttori</b> nel circuito per accendere o spegnere i bit.</li>
+        <li>Obiettivo del livello: <b>accendere la lampadina</b> (o rispondere alla domanda).</li>
+        <li>Quando ci riesci, vai al <b>livello successivo</b>: ogni livello superato dà <b>100 punti</b>.</li>
+      </ol>
+      <p class="muto">I numeri in alto sono i livelli. Se sei bloccato puoi spegnere tutto e ricominciare.</p>`,
+    },
+  ],
+});
+
 const storage = {
   get(k) { try { return localStorage.getItem(k); } catch { return null; } },
   set(k, v) { try { localStorage.setItem(k, v); } catch { /* ignora */ } },
