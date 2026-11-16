@@ -2,7 +2,7 @@
 /**
  * Download del diploma in PDF.
  *   GET  diploma_pdf.php?t=<token>  link del QR code (api/diploma_token.php): niente login,
- *                                   valido DIPLOMA_TOKEN_MINUTI minuti
+ *                                   valido diploma_token_minuti() minuti
  *   POST diploma_pdf.php  nome=...  dalla pagina diploma.php, per il partecipante della sessione
  *   GET  diploma_pdf.php            come sopra, senza nome
  *
@@ -31,6 +31,10 @@ function errore_pagina(int $codice, string $titolo, string $messaggio): never
 
 $token = (string) ($_GET['t'] ?? '');
 
+if (!diploma_aperto()) {
+    errore_pagina(403, 'Download chiuso', DIPLOMA_CHIUSO_MSG);
+}
+
 if ($token !== '') {
     if (preg_match('/^[0-9a-f]{32}$/', $token) !== 1) {
         errore_pagina(404, 'Link non valido', 'Inquadra di nuovo il QR code dalla pagina del diploma.');
@@ -41,7 +45,7 @@ if ($token !== '') {
     $p = $riga ? dati_diploma((int) $riga['partecipante_id']) : null;
     if ($p === null) {
         errore_pagina(410, 'QR code scaduto',
-            'Il link vale ' . DIPLOMA_TOKEN_MINUTI . ' minuti. Genera un nuovo QR code dalla pagina del diploma e inquadralo di nuovo.');
+            'Il link vale ' . diploma_token_minuti() . ' minuti. Genera un nuovo QR code dalla pagina del diploma e inquadralo di nuovo.');
     }
     invia_diploma_pdf($p, $riga['nome']);
 }

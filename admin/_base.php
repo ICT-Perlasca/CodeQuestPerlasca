@@ -212,6 +212,83 @@ if (empty($_SESSION['admin'])) {
     exit;
 }
 
+/**
+ * Crea (o ricrea) la sessione di gioco in un colpo solo: giornata, ora di fine, password ospiti,
+ * scadenza del download e validita' del QR. Apre il login. Facoltativo: azzera la classifica
+ * (il registro permanente non si tocca mai).
+ *
+ * @return array{0: bool, 1: string} [riuscita, messaggio]
+ */
+function nuova_sessione(PDO $pdo, array $in): array
+{
+    $pulisci = static fn(string $k): string => trim((string) preg_replace('/\s+/u', ' ', (string) ($in[$k] ?? '')));
+    $stampabile = static fn(string $t): bool => mb_convert_encoding(mb_convert_encoding($t, 'Windows-1252', 'UTF-8'), 'UTF-8', 'Windows-1252') === $t;
+
+    $tipo = (string) ($in['tipo'] ?? '');
+    $data = DateTime::createFromFormat('!Y-m-d', (string) ($in['data'] ?? ''));
+    $fine = $data ? DateTime::createFromFormat('Y-m-d H:i', $data->format('Y-m-d') . ' ' . (string) ($in['fine'] ?? '')) : false;
+    $titolo = $pulisci('titolo');
+    $descrizione = $pulisci('descrizione');
+    $pass = strtolower(trim((string) ($in['ospite_pass'] ?? '')));
+    $qr = (string) ($in['qr_minuti'] ?? '');
+    $grezzo = trim((string) ($in['diploma_scadenza'] ?? ''));
+    $diploma = $grezzo === '' ? null : DateTime::createFromFormat('Y-m-d\TH:i', $grezzo);
+
+    if (!isset(TIPI_GIORNATA[$tipo])) {
+        return [false, 'Tipo di giornata non valido.'];
+    }
+    if ($data === false || $fine === false) {
+        return [false, "Giorno e ora di fine dell'attività sono obbligatori."];
+    }
+    if ($fine->getTimestamp() <= time()) {
+        return [false, "L'ora di fine è già passata: la sessione risulterebbe subito scaduta."];
+    }
+    if (mb_strlen($titolo) > 60 || mb_strlen($descrizione) > 200) {
+        return [false, 'Titolo max 60 caratteri, descrizione max 200.'];
+    }
+    if (!$stampabile($titolo) || !$stampabile($descrizione)) {
+        return [false, 'Titolo o descrizione contengono caratteri che il PDF non sa stampare (emoji, simboli): toglili.'];
+    }
+    if (preg_match('/^[a-z0-9]{4,30}$/', $pass) !== 1) {
+        return [false, 'Password ospiti obbligatoria: 4-30 caratteri, solo lettere (senza accenti) e numeri.'];
+    }
+    if (hash_equals(OSPITE_PASS, $pass) || (sessione_stato() === 'scaduta' && hash_equals(ospite_pass(), $pass))) {
+        return [false, 'Scegli una password nuova: diversa da quella della sessione precedente e da quella predefinita di config.php.'];
+    }
+    if (!ctype_digit($qr) || (int) $qr < 1 || (int) $qr > DIPLOMA_TOKEN_MINUTI_MAX) {
+        return [false, 'Validità del QR code: da 1 a ' . DIPLOMA_TOKEN_MINUTI_MAX . ' minuti.'];
+    }
+    if ($diploma === false || ($diploma !== null && $diploma <= $fine)) {
+        return [false, "La scadenza del download dev'essere una data valida dopo la fine della sessione (o vuota = automatica)."];
+    }
+
+    $azzerati = 0;
+    $pdo->beginTransaction();
+    $st = $pdo->prepare('INSERT INTO impostazioni (chiave, valore) VALUES (?, ?) ON DUPLICATE KEY UPDATE valore = VALUES(valore)');
+    foreach ([
+        'sessione_tipo' => $tipo,
+        'sessione_data' => $data->format('Y-m-d'),
+        'sessione_titolo' => $titolo,
+        'sessione_descrizione' => $descrizione,
+        'scadenza' => $fine->format('Y-m-d H:i:00'),
+        'evento_attivo' => '1',
+        'ospite_pass' => $pass,
+        'diploma_scadenza' => $diploma ? $diploma->format('Y-m-d H:i:00') : '',
+        'diploma_qr_minuti' => (string) (int) $qr,
+        'sessione_creata' => date('Y-m-d H:i:s'),
+    ] as $chiave => $valore) {
+        $st->execute([$chiave, $valore]);
+    }
+    if (!empty($in['azzera'])) {
+        $azzerati = (int) $pdo->exec('DELETE FROM partecipanti');
+    }
+    $pdo->commit();
+
+    return [true, 'Sessione creata: ' . TIPI_GIORNATA[$tipo]['etichetta'] . ' del ' . $data->format('d/m/Y')
+        . ', login aperto fino alle ' . $fine->format('H:i') . ", password «{$pass}»."
+        . ($azzerati > 0 ? " Classifica azzerata ({$azzerati} partecipanti)." : '')];
+}
+
 /* ---------------------------------------------------------------- azioni */
 if ($metodo === 'POST') {
     if (!hash_equals($_SESSION['csrf'] ?? '', (string) ($_POST['csrf'] ?? ''))) {
@@ -266,6 +343,51 @@ if ($metodo === 'POST') {
             $st->execute(['evento_attivo', isset($_POST['attivo']) ? '1' : '0']);
             $st->execute(['scadenza', $scadenza->format('Y-m-d H:i:00')]);
             flash('Impostazioni evento salvate.');
+            break;
+
+        case 'sessione_nuova':
+            $nuova = nuova_sessione($pdo, $_POST);
+            flash($nuova[1], $nuova[0] ? 'ok' : 'ko');
+            break;
+
+        case 'sessione_termina':
+            $pdo->prepare("INSERT INTO impostazioni (chiave, valore) VALUES ('scadenza', ?) ON DUPLICATE KEY UPDATE valore = VALUES(valore)")
+                ->execute([date('Y-m-d H:i:s')]);
+            flash('Sessione terminata: il login è chiuso. Crea la prossima quando serve.');
+            break;
+
+        case 'password_ospite':
+            // il login confronta in minuscolo e senza spazi ai lati: salviamo gia' cosi'
+            $pass = strtolower(trim((string) ($_POST['ospite_pass'] ?? '')));
+            if ($pass === '') {
+                $pdo->prepare("DELETE FROM impostazioni WHERE chiave = 'ospite_pass'")->execute();
+                flash('Password ospiti ripristinata a quella di config.php.');
+            } elseif (preg_match('/^[a-z0-9]{4,30}$/', $pass) !== 1) {
+                flash('Password: 4-30 caratteri, solo lettere (senza accenti) e numeri.', 'ko');
+            } else {
+                $pdo->prepare('INSERT INTO impostazioni (chiave, valore) VALUES (?, ?) ON DUPLICATE KEY UPDATE valore = VALUES(valore)')
+                    ->execute(['ospite_pass', $pass]);
+                flash("Password ospiti cambiata in «{$pass}». Chi è già dentro resta collegato.");
+            }
+            break;
+
+        case 'diploma':
+            $minuti = (string) ($_POST['qr_minuti'] ?? '');
+            if (!ctype_digit($minuti) || (int) $minuti < 1 || (int) $minuti > DIPLOMA_TOKEN_MINUTI_MAX) {
+                flash('Validità del QR code: da 1 a ' . DIPLOMA_TOKEN_MINUTI_MAX . ' minuti.', 'ko');
+                break;
+            }
+            $grezzo = trim((string) ($_POST['diploma_scadenza'] ?? ''));
+            $fine = $grezzo === '' ? null : DateTime::createFromFormat('Y-m-d\TH:i', $grezzo);
+            if ($fine === false) {
+                flash('Data non valida.', 'ko');
+                break;
+            }
+            $st = $pdo->prepare('INSERT INTO impostazioni (chiave, valore) VALUES (?, ?) ON DUPLICATE KEY UPDATE valore = VALUES(valore)');
+            $st->execute(['diploma_scadenza', $fine ? $fine->format('Y-m-d H:i:00') : '']);
+            $st->execute(['diploma_qr_minuti', (string) (int) $minuti]);
+            flash(($fine ? 'Attestati scaricabili fino al ' . $fine->format('d/m/Y H:i') : 'Download attestati con scadenza automatica')
+                . '; QR code valido ' . (int) $minuti . ' minuti.');
             break;
 
         case 'sessione':
@@ -356,6 +478,13 @@ $csrf = $_SESSION['csrf'] ?? '';
 function admin_inizio(string $file, string $titolo): void
 {
     global $e, $csrf;
+    // sessione mai creata o scaduta: l'admin deve (ri)crearla prima di usare il resto del pannello.
+    // Restano liberi registro (export dei dati a fine giornata) e sistema (reset).
+    if ($file !== 'sessione.php' && !in_array($file, ['registro.php', 'sistema.php'], true) && sessione_stato() !== 'attiva') {
+        flash(sessione_stato() === 'nuova' ? 'Prima di tutto crea la sessione di gioco.' : 'La sessione è terminata: creane una nuova.', 'ko');
+        header('Location: sessione.php');
+        exit;
+    }
     $flash = $_SESSION['flash'] ?? null;
     unset($_SESSION['flash']);
     $scadenza = strtotime((string) (db()->query("SELECT valore FROM impostazioni WHERE chiave = 'scadenza'")->fetchColumn() ?: ''));

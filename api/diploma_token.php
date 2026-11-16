@@ -4,7 +4,7 @@
  * Body JSON: { "nome": "Mario Rossi" }   (facoltativo, stampato al posto del nickname)
  *
  * Crea il token del QR code per scaricare il diploma da un altro telefono:
- * valido DIPLOMA_TOKEN_MINUTI minuti, uno solo attivo per partecipante (il nuovo
+ * valido diploma_token_minuti() minuti, uno solo attivo per partecipante (il nuovo
  * sostituisce il vecchio). I token scaduti, con il nome, vengono cancellati qui.
  *
  * Risposta: { ok, token, secondi }
@@ -25,6 +25,9 @@ if (empty($_SESSION['ospite'])) {
 if (empty($_SESSION['uuid'])) {
     json_errore(409, 'Prima scegli il tuo nickname');
 }
+if (!diploma_aperto()) {
+    json_errore(403, DIPLOMA_CHIUSO_MSG);
+}
 $in = leggi_json();
 
 try {
@@ -43,14 +46,15 @@ if ($id === false) {
 
 $token = bin2hex(random_bytes(16));
 $ora = time();
+$durata = diploma_token_minuti() * 60;
 
 $pdo->beginTransaction();
 $st = $pdo->prepare('DELETE FROM diplomi_token WHERE scade_il <= ? OR partecipante_id = ?');
 $st->execute([date('Y-m-d H:i:s', $ora), $id]);
 $st = $pdo->prepare('INSERT INTO diplomi_token (token, partecipante_id, nome, scade_il) VALUES (?, ?, ?, ?)');
-$st->execute([$token, $id, $nome, date('Y-m-d H:i:s', $ora + DIPLOMA_TOKEN_MINUTI * 60)]);
+$st->execute([$token, $id, $nome, date('Y-m-d H:i:s', $ora + $durata)]);
 $pdo->commit();
 
 registra_diploma((int) $id, $nome);
 
-json_out(['ok' => true, 'token' => $token, 'secondi' => DIPLOMA_TOKEN_MINUTI * 60]);
+json_out(['ok' => true, 'token' => $token, 'secondi' => $durata]);

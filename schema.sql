@@ -12,7 +12,6 @@ DROP TABLE IF EXISTS diplomi_token;
 DROP TABLE IF EXISTS punteggi;
 DROP TABLE IF EXISTS partecipanti;
 DROP TABLE IF EXISTS moduli;
-DROP TABLE IF EXISTS blacklist;
 DROP TABLE IF EXISTS impostazioni;
 
 SET FOREIGN_KEY_CHECKS = 1;
@@ -178,18 +177,51 @@ CREATE TABLE IF NOT EXISTS registro (
 -- Blacklist nickname: confronto per sottostringa dopo normalizzazione
 -- (minuscolo, leet-speak 0->o 1->i 3->e 4->a 5->s 7->t, solo lettere).
 -- Aggiungere/rimuovere voci liberamente da phpMyAdmin o admin.php.
+-- Tabella permanente come `registro`: il reimport dello schema non la
+-- azzera (niente DROP) e le parole di default vengono inserite solo se la
+-- tabella e' vuota. Non e' toccata nemmeno da "Azzera classifica".
 -- ---------------------------------------------------------------------
-CREATE TABLE blacklist (
+CREATE TABLE IF NOT EXISTS blacklist (
   id      INT UNSIGNED NOT NULL AUTO_INCREMENT,
   parola  VARCHAR(40)  NOT NULL,
   PRIMARY KEY (id),
   UNIQUE KEY uq_parola (parola)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT INTO blacklist (parola) VALUES
-  ('cazz'), ('merd'), ('stronz'), ('vaffanc'), ('fanculo'), ('puttan'),
-  ('troia'), ('coglion'), ('minchi'), ('bastard'), ('frocio'), ('ricchion'),
-  ('negro'), ('nazi'), ('hitler'), ('mussolini'), ('porcodio'), ('diocane'),
-  ('madonnaputt'), ('suca'), ('pompin'), ('figa'), ('sega'), ('culo'),
-  ('fuck'), ('shit'), ('bitch'), ('dick'), ('porn'), ('sex'),
-  ('admin'), ('docente'), ('prof');
+INSERT INTO blacklist (parola)
+SELECT t.parola FROM (
+  SELECT 'cazz' AS parola
+  UNION ALL SELECT 'merd'
+  UNION ALL SELECT 'stronz'
+  UNION ALL SELECT 'vaffanc'
+  UNION ALL SELECT 'fanculo'
+  UNION ALL SELECT 'puttan'
+  UNION ALL SELECT 'troia'
+  UNION ALL SELECT 'coglion'
+  UNION ALL SELECT 'minchi'
+  UNION ALL SELECT 'bastard'
+  UNION ALL SELECT 'frocio'
+  UNION ALL SELECT 'ricchion'
+  UNION ALL SELECT 'negro'
+  UNION ALL SELECT 'nazi'
+  UNION ALL SELECT 'hitler'
+  UNION ALL SELECT 'mussolini'
+  UNION ALL SELECT 'porcodio'
+  UNION ALL SELECT 'diocane'
+  UNION ALL SELECT 'madonnaputt'
+  UNION ALL SELECT 'suca'
+  UNION ALL SELECT 'pompin'
+  UNION ALL SELECT 'figa'
+  UNION ALL SELECT 'sega'
+  UNION ALL SELECT 'culo'
+  UNION ALL SELECT 'fuck'
+  UNION ALL SELECT 'shit'
+  UNION ALL SELECT 'bitch'
+  UNION ALL SELECT 'dick'
+  UNION ALL SELECT 'porn'
+  UNION ALL SELECT 'sex'
+  UNION ALL SELECT 'admin'
+  UNION ALL SELECT 'docente'
+  UNION ALL SELECT 'prof'
+) t
+WHERE NOT EXISTS (SELECT 1 FROM blacklist);

@@ -44,8 +44,8 @@ Nessuna dipendenza da CDN: l'evento può girare in LAN senza internet.
    php -r 'echo password_hash("la-tua-password", PASSWORD_DEFAULT), PHP_EOL;'
    ```
 2. **Non** caricare `config.local.php`.
-3. Importa `schema.sql`. Su DB già esistenti le modifiche vanno applicate a mano (`ALTER`/`INSERT`): `CREATE TABLE IF NOT EXISTS` non aggiorna le tabelle. La tabella `registro` è permanente e non va mai cancellata.
-4. Imposta la scadenza della sessione alla data dell'Open Day.
+3. Importa `schema.sql`. Su DB già esistenti le modifiche vanno applicate a mano (`ALTER`/`INSERT`): `CREATE TABLE IF NOT EXISTS` non aggiorna le tabelle. Le tabelle `registro` e `blacklist` sono permanenti e non vanno mai cancellate.
+4. Al primo accesso ad `admin/` crea la sessione (pagina Sessione): giornata, ora di fine, password ospiti. Finché non lo fai il login ospite resta chiuso; a fine sessione va ricreata, con una nuova password.
 
 ## Note
 

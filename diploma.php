@@ -23,6 +23,7 @@ if ($id === false) {
 $p = dati_diploma((int) $id); // null = nascosto dall'admin
 
 $e = static fn(string $s): string => htmlspecialchars($s, ENT_QUOTES);
+$diplomaAperto = diploma_aperto();
 $sessione = sessione_attivita(); // tipo di giornata scelto in admin.php: cambia i testi come nel PDF
 ?>
 <!doctype html>
@@ -165,6 +166,9 @@ $sessione = sessione_attivita(); // tipo di giornata scelto in admin.php: cambia
     </div>
   <?php endif; ?>
 
+  <?php if (!$diplomaAperto): ?>
+    <section class="card"><h2>Download chiuso</h2><p><?= $e(DIPLOMA_CHIUSO_MSG) ?></p></section>
+  <?php else: ?>
   <form class="card" id="form-pdf" method="post" action="diploma_pdf.php" autocomplete="off">
     <h2>Scarica il PDF</h2>
     <label>Nome e cognome da stampare (facoltativo)
@@ -181,7 +185,7 @@ $sessione = sessione_attivita(); // tipo di giornata scelto in admin.php: cambia
   <section class="card">
     <h2>📱 Scaricalo su un altro telefono</h2>
     <p>Inquadra il QR code con la fotocamera di un telefono: il PDF si scarica senza login.
-      Il codice vale <?= DIPLOMA_TOKEN_MINUTI ?> minuti.</p>
+      Il codice vale <?= diploma_token_minuti() ?> minuti.</p>
     <p class="avviso" id="avviso-localhost" hidden>Stai usando <b>localhost</b>: un telefono non può raggiungere questo indirizzo.
       Apri la pagina dall'indirizzo IP del PC (quello che stampa <code>dev/xampp.sh</code>) e genera di nuovo il QR code.</p>
     <div class="qr-area" id="qr-area" hidden>
@@ -192,10 +196,11 @@ $sessione = sessione_attivita(); // tipo di giornata scelto in admin.php: cambia
     <p class="errore" id="qr-errore" role="alert" hidden></p>
     <button class="btn secondario" type="button" id="btn-qr">Genera QR code</button>
   </section>
+  <?php endif; ?>
 <?php endif; ?>
 </main>
 
-<?php if ($p): ?>
+<?php if ($p && $diplomaAperto): ?>
 <script src="assets/js/vendor/qrcode.min.js"></script>
 <script>
 'use strict';

@@ -53,6 +53,17 @@ function avvia_sessione(): void
     session_start();
 }
 
+/** Password degli ospiti: quella scelta in admin/Sessione (`ospite_pass`), altrimenti OSPITE_PASS di config.php. */
+function ospite_pass(): string
+{
+    static $pass = null;
+    if ($pass === null) {
+        $v = db()->query("SELECT valore FROM impostazioni WHERE chiave = 'ospite_pass'")->fetchColumn();
+        $pass = is_string($v) && $v !== '' ? $v : OSPITE_PASS;
+    }
+    return $pass;
+}
+
 /** true se l'evento e' attivo e non ancora scaduto (flag + scadenza in `impostazioni`). */
 function evento_aperto(): bool
 {
@@ -62,13 +73,33 @@ function evento_aperto(): bool
     }
 
     $righe = db()
-        ->query("SELECT chiave, valore FROM impostazioni WHERE chiave IN ('evento_attivo', 'scadenza')")
+        ->query("SELECT chiave, valore FROM impostazioni WHERE chiave IN ('evento_attivo', 'scadenza', 'sessione_creata')")
         ->fetchAll(PDO::FETCH_KEY_PAIR);
 
     $attivo   = ($righe['evento_attivo'] ?? '0') === '1';
     $scadenza = isset($righe['scadenza']) ? strtotime($righe['scadenza']) : false;
 
-    return $aperto = $attivo && ($scadenza === false || time() < $scadenza);
+    // senza una sessione creata dall'admin il login resta chiuso
+    return $aperto = ($righe['sessione_creata'] ?? '') !== '' && $attivo && ($scadenza === false || time() < $scadenza);
+}
+
+/**
+ * Stato della sessione di gioco:
+ *   'nuova'   = l'admin non l'ha mai creata (primo avvio o schema reimportato)
+ *   'scaduta' = e' passata l'ora di fine: va ricreata (impostazioni e password)
+ *   'attiva'  = in corso
+ * Il login ospite si apre solo con una sessione attiva (vedi evento_aperto()).
+ */
+function sessione_stato(): string
+{
+    $righe = db()
+        ->query("SELECT chiave, valore FROM impostazioni WHERE chiave IN ('scadenza', 'sessione_creata')")
+        ->fetchAll(PDO::FETCH_KEY_PAIR);
+    if (($righe['sessione_creata'] ?? '') === '') {
+        return 'nuova';
+    }
+    $scadenza = isset($righe['scadenza']) ? strtotime($righe['scadenza']) : false;
+    return $scadenza !== false && time() >= $scadenza ? 'scaduta' : 'attiva';
 }
 
 /**

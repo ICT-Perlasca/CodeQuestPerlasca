@@ -10,11 +10,46 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/db.php';
 
-const DIPLOMA_TOKEN_MINUTI = 10;
+const DIPLOMA_TOKEN_MINUTI = 10;      // predefinito, modificabile da admin (impostazione `diploma_qr_minuti`)
+const DIPLOMA_TOKEN_MINUTI_MAX = 1440;
+
+/** Validita' del QR code in minuti: impostazione admin, altrimenti DIPLOMA_TOKEN_MINUTI. */
+function diploma_token_minuti(): int
+{
+    $v = db()->query("SELECT valore FROM impostazioni WHERE chiave = 'diploma_qr_minuti'")->fetchColumn();
+    $m = is_string($v) && ctype_digit($v) ? (int) $v : DIPLOMA_TOKEN_MINUTI;
+    return $m >= 1 && $m <= DIPLOMA_TOKEN_MINUTI_MAX ? $m : DIPLOMA_TOKEN_MINUTI;
+}
 
 // Il primo attestato rilasciato porta questo numero, i successivi proseguono di uno.
 // Partire alto da' piu' peso al diploma; la numerazione vive nel registro permanente.
 const ATTESTATO_PRIMO_NUMERO = 1287;
+
+/**
+ * Scadenza del download del diploma: quella impostata in admin/sessione.php
+ * (`diploma_scadenza`), altrimenti la mezzanotte che chiude il giorno dopo
+ * l'evento (00:00 di due giorni dopo la data della sessione).
+ * Indipendente dalla scadenza del login.
+ */
+function diploma_scadenza(): int
+{
+    $v = db()->query("SELECT valore FROM impostazioni WHERE chiave = 'diploma_scadenza'")->fetchColumn();
+    $t = is_string($v) && $v !== '' ? strtotime($v) : false;
+    return $t !== false ? $t : diploma_scadenza_automatica();
+}
+
+function diploma_scadenza_automatica(): int
+{
+    return (int) strtotime('+2 days', strtotime(date('Y-m-d', sessione_attivita()['data'])));
+}
+
+/** true se gli studenti possono ancora scaricare il diploma. */
+function diploma_aperto(): bool
+{
+    return time() < diploma_scadenza();
+}
+
+const DIPLOMA_CHIUSO_MSG = 'Il download degli attestati è chiuso. Chiedi a un membro dello staff.';
 
 /** Data dell'attivita' ("13 dicembre 2026"): quella della sessione in admin, altrimenti il giorno della `scadenza`. */
 function data_evento(): string

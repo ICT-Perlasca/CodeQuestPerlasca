@@ -18,8 +18,10 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     if ($tentativi >= 10) {
         $errore = 'Troppi tentativi: chiedi la password allo staff.';
     } elseif (!evento_aperto()) {
-        $errore = sessione_attivita()['etichetta'] . " e' terminato. Ti aspettiamo all'IIS Perlasca!";
-    } elseif (hash_equals(OSPITE_USER, $utente) && hash_equals(OSPITE_PASS, strtolower(trim($password)))) {
+        $errore = sessione_stato() === 'nuova'
+            ? "L'evento non e' ancora iniziato: chiedi allo staff."
+            : sessione_attivita()['etichetta'] . " e' terminato. Ti aspettiamo all'IIS Perlasca!";
+    } elseif (hash_equals(OSPITE_USER, $utente) && hash_equals(ospite_pass(), strtolower(trim($password)))) {
         session_regenerate_id(true);
         $_SESSION['ospite'] = true;
         $_SESSION['tentativi_login'] = 0;

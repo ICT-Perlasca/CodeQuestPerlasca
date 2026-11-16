@@ -5,7 +5,7 @@
  */
 declare(strict_types=1);
 
-require_once __DIR__ . '/inc/config.php';
+require_once __DIR__ . '/inc/db.php'; // carica anche config.php
 
 $cartella = rtrim(dirname($_SERVER['SCRIPT_NAME'] ?? '/'), '/');
 $urlGioco = ($_SERVER['HTTP_HOST'] ?? 'localhost') . $cartella;
@@ -158,7 +158,7 @@ $e = static fn(string $s): string => htmlspecialchars($s, ENT_QUOTES);
         <p>Gioca anche tu! Apri</p>
         <span class="url"><?= $e($urlGioco) ?></span>
         <p>password</p>
-        <span class="pwd"><?= $e(OSPITE_PASS) ?></span>
+        <span class="pwd"><?= $e(ospite_pass()) ?></span>
       </div>
     </aside>
   </main>
