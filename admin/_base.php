@@ -126,6 +126,8 @@ function admin_css(): void
   @media (min-width:760px) { .campi { grid-template-columns:repeat(3, 1fr); } .campi .largo { grid-column:1 / -1; } }
   .campi label { display:grid; align-content:start; gap:6px; color:var(--muted); font-size:.9rem; }
   .campi label > .muted { font-size:.8rem; }
+  .campi label.riga-form { display:flex; align-items:flex-start; gap:10px; flex-wrap:nowrap; padding:10px 12px; border:1px solid var(--line); border-radius:10px; background:#0e1430; color:var(--text); cursor:pointer; }
+  .campi label.riga-form input[type=checkbox] { flex:none; width:18px; height:18px; margin:1px 0 0; accent-color:var(--accent); }
   select, textarea, input[type=date], input[type=time] { font:inherit; color:var(--text); padding:9px 11px; border-radius:9px;
     border:1px solid var(--line); background:#0e1430; color-scheme:dark; min-width:0; }
   textarea { resize:vertical; }
