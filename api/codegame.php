@@ -74,7 +74,7 @@ if ($livello === false || !isset($livelli[$livello])) {
 }
 
 if ($azione === 'inizia') {
-    if ($livello > 1 && !CODEGAME_SBLOCCA_TUTTO) {
+    if ($livello > 1 && !sblocca_livelli()) {
         $st = $pdo->prepare('SELECT 1 FROM codegame_tempi WHERE partecipante_id = ? AND livello = ? AND ms IS NOT NULL');
         $st->execute([$pid, $livello - 1]);
         if ($st->fetchColumn() === false) {

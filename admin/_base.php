@@ -262,6 +262,7 @@ function salva_sessione(PDO $pdo, array $in, ?int $id = null): array
     $grezzo = trim((string) ($in['diploma_scadenza'] ?? ''));
     $diploma = $grezzo === '' ? null : DateTime::createFromFormat('Y-m-d\TH:i', $grezzo);
     $demo = !empty($in['demo']) ? 1 : 0;
+    $sblocca = !empty($in['sblocca_tutto']) ? 1 : 0;
     $attiva = $id === null || !empty($in['attiva']) ? 1 : 0;
 
     if ($nome === '' || mb_strlen($nome) > 60) {
@@ -305,20 +306,20 @@ function salva_sessione(PDO $pdo, array $in, ?int $id = null): array
 
     $campi = [
         'nome' => $nome, 'tipo' => $tipo, 'data' => $data->format('Y-m-d'), 'titolo' => $titolo, 'descrizione' => $descrizione,
-        'utente' => $utente, 'password' => $pass, 'scade_il' => $fine->format('Y-m-d H:i:00'), 'attiva' => $attiva, 'demo' => $demo,
+        'utente' => $utente, 'password' => $pass, 'scade_il' => $fine->format('Y-m-d H:i:00'), 'attiva' => $attiva, 'demo' => $demo, 'sblocca_tutto' => $sblocca,
         'diploma_scade_il' => $diploma ? $diploma->format('Y-m-d H:i:00') : null, 'qr_minuti' => (int) $qr,
     ];
     if ($id === null) {
         $pdo->prepare(
-            'INSERT INTO sessioni (nome, tipo, data, titolo, descrizione, utente, password, scade_il, attiva, demo, diploma_scade_il, qr_minuti)
-             VALUES (:nome, :tipo, :data, :titolo, :descrizione, :utente, :password, :scade_il, :attiva, :demo, :diploma_scade_il, :qr_minuti)'
+            'INSERT INTO sessioni (nome, tipo, data, titolo, descrizione, utente, password, scade_il, attiva, demo, sblocca_tutto, diploma_scade_il, qr_minuti)
+             VALUES (:nome, :tipo, :data, :titolo, :descrizione, :utente, :password, :scade_il, :attiva, :demo, :sblocca_tutto, :diploma_scade_il, :qr_minuti)'
         )->execute($campi);
         $id = (int) $pdo->lastInsertId();
         $msg = "Sessione «{$nome}» creata";
     } else {
         $pdo->prepare(
             'UPDATE sessioni SET nome = :nome, tipo = :tipo, data = :data, titolo = :titolo, descrizione = :descrizione,
-                    utente = :utente, password = :password, scade_il = :scade_il, attiva = :attiva, demo = :demo,
+                    utente = :utente, password = :password, scade_il = :scade_il, attiva = :attiva, demo = :demo, sblocca_tutto = :sblocca_tutto,
                     diploma_scade_il = :diploma_scade_il, qr_minuti = :qr_minuti
               WHERE id = :id'
         )->execute($campi + ['id' => $id]);

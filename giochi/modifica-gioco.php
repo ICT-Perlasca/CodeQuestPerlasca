@@ -161,6 +161,7 @@ const MISSIONI = F.MISSIONI.slice(0, N_MISSIONI);
 const PUNTI_MISSIONE = 100;
 const API = '../api/save_score.php';
 const MODULO = 'modifica_gioco';
+const SBLOCCA_TUTTO = <?= sblocca_livelli() ? 'true' : 'false' ?>; // missioni tutte aperte (scelto per sessione in admin)
 
 const $ = (id) => document.getElementById(id);
 const storage = {
@@ -344,7 +345,7 @@ function ciclo(t) {
    MISSIONI
    ===================================================================== */
 function apriMissione(i) {
-  if (i > 0 && !stato.fatte.has(i - 1)) return;
+  if (!SBLOCCA_TUTTO && i > 0 && !stato.fatte.has(i - 1)) return;
   stato.m = i;
   storage.set('od_palla_missione', String(i));
   const m = MISSIONI[i];
@@ -388,7 +389,7 @@ function disegnaMissioni() {
     b.title = `Missione ${i + 1}: ${m.titolo}`;
     b.classList.toggle('fatta', stato.fatte.has(i));
     b.classList.toggle('corrente', i === stato.m);
-    b.disabled = i > 0 && !stato.fatte.has(i - 1);
+    b.disabled = !SBLOCCA_TUTTO && i > 0 && !stato.fatte.has(i - 1);
     b.addEventListener('click', () => apriMissione(i));
     nav.append(b);
   });
@@ -442,7 +443,7 @@ $('btn-avanti').addEventListener('click', () => apriMissione(stato.m + 1));
 costruisciCodice();
 const primaLibera = MISSIONI.findIndex((m, i) => !stato.fatte.has(i));
 const salvata = Number(storage.get('od_palla_missione'));
-apriMissione(Number.isInteger(salvata) && salvata < MISSIONI.length && (salvata === 0 || stato.fatte.has(salvata - 1))
+apriMissione(Number.isInteger(salvata) && salvata < MISSIONI.length && (SBLOCCA_TUTTO || salvata === 0 || stato.fatte.has(salvata - 1))
   ? salvata : Math.max(0, primaLibera));
 if (!storage.get('od_uuid')) { $('avviso').innerHTML = 'Modalità prova: <a href="../index.php">entra all\'Open Day</a> per salvare i punti in classifica.'; $('avviso').hidden = false; }
 else if (stato.fatte.size) salva(); // riallinea il server se il telefono ha progressi non salvati

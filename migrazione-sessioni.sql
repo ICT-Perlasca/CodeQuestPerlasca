@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS sessioni (
   scade_il          DATETIME      NOT NULL,
   attiva            TINYINT(1)    NOT NULL DEFAULT 1,
   demo              TINYINT(1)    NOT NULL DEFAULT 0,
+  sblocca_tutto     TINYINT(1)    NOT NULL DEFAULT 0,
   diploma_scade_il  DATETIME      NULL,
   qr_minuti         SMALLINT UNSIGNED NULL,
   creata_il         DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,

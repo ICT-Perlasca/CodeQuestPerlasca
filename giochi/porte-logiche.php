@@ -173,6 +173,7 @@ const N_LIVELLI = LIVELLI.length;
 const PUNTI_LIVELLO = 100;
 const API = '../api/save_score.php';
 const MODULO = 'porte_logiche';
+const SBLOCCA_TUTTO = <?= sblocca_livelli() ? 'true' : 'false' ?>; // livelli tutti aperti (scelto per sessione in admin)
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
@@ -477,7 +478,7 @@ function completa() {
 }
 
 function apriLivello(i) {
-  if (i > 0 && !stato.fatti.has(i - 1)) return;
+  if (!SBLOCCA_TUTTO && i > 0 && !stato.fatti.has(i - 1)) return;
   stato.n = i;
   storage.set('od_porte_livello', String(i));
   const l = liv();
@@ -513,7 +514,7 @@ function disegnaLivelli() {
     b.title = `Livello ${i + 1}: ${l.titolo}`;
     b.classList.toggle('fatto', stato.fatti.has(i));
     b.classList.toggle('corrente', i === stato.n);
-    b.disabled = i > 0 && !stato.fatti.has(i - 1);
+    b.disabled = !SBLOCCA_TUTTO && i > 0 && !stato.fatti.has(i - 1);
     b.addEventListener('click', () => apriLivello(i));
     nav.append(b);
   });

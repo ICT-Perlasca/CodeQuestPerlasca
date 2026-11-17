@@ -39,6 +39,7 @@ CREATE TABLE impostazioni (
 --   tipo       : 'openday' | 'laboratori' (TIPI_GIORNATA in inc/db.php)
 --   scade_il   : oltre questa data/ora il login e il salvataggio punti sono rifiutati
 --   attiva     : 0 = chiusa a mano
+--   sblocca_tutto : 1 = tutti i livelli aperti subito, senza risolvere i precedenti (utile per demo e prove)
 --   demo       : 1 = prova: niente registro permanente ne' numero d'attestato
 --   diploma_scade_il : fine del download attestati (NULL = automatica, 2 giorni dopo la data)
 --   qr_minuti  : validita' del QR code del diploma (NULL = predefinita)
@@ -55,6 +56,7 @@ CREATE TABLE sessioni (
   scade_il          DATETIME      NOT NULL,
   attiva            TINYINT(1)    NOT NULL DEFAULT 1,
   demo              TINYINT(1)    NOT NULL DEFAULT 0,
+  sblocca_tutto     TINYINT(1)    NOT NULL DEFAULT 0,
   diploma_scade_il  DATETIME      NULL,
   qr_minuti         SMALLINT UNSIGNED NULL,
   creata_il         DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,

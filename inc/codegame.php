@@ -24,9 +24,7 @@ const CODEGAME_BONUS_BLOCCHI = 20; // soluzione con il numero minimo di blocchi
 const CODEGAME_PESO_RIF = 3;       // la media parte come se 3 persone avessero impiegato il tempo di riferimento
 const CODEGAME_MIN_MS = 2000;      // sotto i 2 secondi non e' umano
 
-// TEMPORANEO: true = tutti i livelli aperti senza risolvere i precedenti (per provarli).
-// Rimettere a false prima dell'Open Day!
-const CODEGAME_SBLOCCA_TUTTO = false;
+// Livelli aperti senza risolvere i precedenti: si decide per ogni sessione da admin (sblocca_livelli() in inc/db.php).
 
 function codegame_livelli(): array
 {

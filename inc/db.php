@@ -164,6 +164,12 @@ function evento_aperto(): bool
     return $r !== null && stato_sessione($r) === 'attiva';
 }
 
+/** true se nella sessione corrente i livelli (Duck Coding, Porte logiche, Hack, Modifica il gioco) sono tutti aperti senza risolvere i precedenti. */
+function sblocca_livelli(): bool
+{
+    return (int) (sessione_corrente()['sblocca_tutto'] ?? 0) === 1;
+}
+
 /** true se la sessione corrente e' una demo (prova): non scrive nel registro permanente. */
 function sessione_demo(): bool
 {

@@ -212,6 +212,7 @@ const LIVELLI = NUMERI.map((n) => ({ n, ...H.LIVELLI[n - 1] })).filter((l) => l.
 const PUNTI_LIVELLO = 100;
 const API = '../api/save_score.php';
 const MODULO = 'hack_website';
+const SBLOCCA_TUTTO = <?= sblocca_livelli() ? 'true' : 'false' ?>; // livelli tutti aperti (scelto per sessione in admin)
 
 const $ = (id) => document.getElementById(id);
 const storage = {
@@ -286,7 +287,7 @@ function parolaSegreta() {
 }
 
 function apriLivello(i) {
-  if (i > 0 && !stato.fatti.has(LIVELLI[i - 1].n)) return;
+  if (!SBLOCCA_TUTTO && i > 0 && !stato.fatti.has(LIVELLI[i - 1].n)) return;
   stato.i = i;
   if (i >= 0) storage.set('od_hack_livello', String(i));
   stato.aiuti = 0;
@@ -376,7 +377,7 @@ function disegnaLivelli() {
   LIVELLI.forEach((l, i) => {
     const ok = stato.fatti.has(l.n);
     bottone(ok ? '✓' : i + 1, `Livello ${i + 1}: ${l.titolo}`, (ok ? 'fatto' : '') + (i === stato.i ? ' corrente' : ''),
-      i > 0 && !stato.fatti.has(LIVELLI[i - 1].n), () => apriLivello(i));
+      !SBLOCCA_TUTTO && i > 0 && !stato.fatti.has(LIVELLI[i - 1].n), () => apriLivello(i));
   });
   bottone('★', 'Livello segreto (serve il vero F12)', 'segreto' + (stato.segreto ? ' fatto' : '') + (stato.i < 0 ? ' corrente' : ''), false, () => apriLivello(-1));
   $('hud-punti').textContent = punti();
@@ -429,7 +430,7 @@ setInterval(controlla, 300);
 
 const primoLibero = LIVELLI.findIndex((l) => !stato.fatti.has(l.n));
 const salvato = Number(storage.get('od_hack_livello'));
-apriLivello(Number.isInteger(salvato) && salvato >= 0 && salvato < LIVELLI.length && (salvato === 0 || stato.fatti.has(LIVELLI[salvato - 1].n))
+apriLivello(Number.isInteger(salvato) && salvato >= 0 && salvato < LIVELLI.length && (SBLOCCA_TUTTO || salvato === 0 || stato.fatti.has(LIVELLI[salvato - 1].n))
   ? salvato : Math.max(0, primoLibero));
 if (!storage.get('od_uuid')) modalitaProva();
 else if (stato.fatti.size) salva(); // riallinea il server se il telefono ha progressi non salvati

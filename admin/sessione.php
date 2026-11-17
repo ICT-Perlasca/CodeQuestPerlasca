@@ -58,6 +58,8 @@ function campi_sessione(array $v, bool $modifica): void
     </label>
     <label class="largo riga-form"><input type="checkbox" name="demo" value="1" <?= $v['demo'] ? 'checked' : '' ?>>
       Sessione demo (prova): i partecipanti non entrano nel registro permanente e l'attestato non consuma numeri</label>
+    <label class="largo riga-form"><input type="checkbox" name="sblocca_tutto" value="1" <?= $v['sblocca_tutto'] ? 'checked' : '' ?>>
+      Sblocca tutti i livelli: si può giocare qualsiasi livello subito, senza risolvere i precedenti (utile per provare i giochi)</label>
     <?php if ($modifica): ?>
       <label class="largo riga-form"><input type="checkbox" name="attiva" value="1" <?= $v['attiva'] ? 'checked' : '' ?>>
         Login aperto (togli la spunta per chiudere la sessione a mano)</label>
@@ -98,7 +100,7 @@ admin_inizio('sessione.php', 'Sessioni');
 <?php
 $oggi = [
     'nome' => '', 'tipo' => 'openday', 'data' => date('Y-m-d'), 'fine' => '', 'utente' => '', 'password' => '', 'titolo' => '', 'descrizione' => '',
-    'diploma_scadenza' => '', 'qr_minuti' => DIPLOMA_TOKEN_MINUTI, 'demo' => false, 'attiva' => true,
+    'diploma_scadenza' => '', 'qr_minuti' => DIPLOMA_TOKEN_MINUTI, 'demo' => false, 'sblocca_tutto' => false, 'attiva' => true,
 ];
 ?>
 <section class="card" id="nuova-sessione">
@@ -124,7 +126,7 @@ $oggi = [
         'nome' => $riga['nome'], 'tipo' => $riga['tipo'], 'data' => $riga['data'], 'fine' => date('H:i', $tScadenza),
         'utente' => $riga['utente'], 'password' => $riga['password'], 'titolo' => $riga['titolo'], 'descrizione' => $riga['descrizione'],
         'diploma_scadenza' => $diplomaManuale ? date('Y-m-d\TH:i', strtotime((string) $riga['diploma_scade_il'])) : '',
-        'qr_minuti' => diploma_token_minuti(), 'demo' => (int) $riga['demo'] === 1, 'attiva' => (int) $riga['attiva'] === 1,
+        'qr_minuti' => diploma_token_minuti(), 'demo' => (int) $riga['demo'] === 1, 'sblocca_tutto' => (int) $riga['sblocca_tutto'] === 1, 'attiva' => (int) $riga['attiva'] === 1,
     ];
     $aperto = evento_aperto();
     $nPart = (int) ($conteggi[$sidAdmin] ?? 0);

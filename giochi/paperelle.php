@@ -222,7 +222,7 @@ $json = json_encode($livelli, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_A
 
 const LIVELLI = <?= $json ?>;
 const API = '../api/codegame.php';
-const SBLOCCA_TUTTO = <?= CODEGAME_SBLOCCA_TUTTO ? 'true' : 'false' ?>; // inc/codegame.php
+const SBLOCCA_TUTTO = <?= sblocca_livelli() ? 'true' : 'false' ?>; // scelto per sessione in admin
 const T = 50;                          // lato di una casella in unita' SVG
 const DX = [0, 1, 0, -1], DY = [-1, 0, 1, 0];
 const MAX_AZIONI = 400, MAX_CICLI = 2000;
