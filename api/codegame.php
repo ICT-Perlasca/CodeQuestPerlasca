@@ -17,7 +17,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../inc/api.php';
-require_once __DIR__ . '/../inc/codegame.php';
+require_once __DIR__ . '/../inc/duck.php';
 
 richiedi_metodo('POST');
 richiedi_ospite();

@@ -1,0 +1,107 @@
+:root {
+  --run:#ff9f1a;
+}
+html, body { margin:0; }
+body {
+  min-height:100dvh; background:radial-gradient(120% 60% at 50% 0%, #17204a 0%, var(--bg) 60%) fixed, var(--bg);
+  color:var(--text); font:16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-tap-highlight-color:transparent;
+}
+button, select { font:inherit; color:inherit; touch-action:manipulation; cursor:pointer; }
+[hidden] { display:none !important; }
+
+/* ---------- barra superiore ---------- */
+.top {
+  display:flex; align-items:center; gap:10px 14px; flex-wrap:wrap;
+  padding:max(10px, env(safe-area-inset-top)) 16px 10px; border-bottom:1px solid var(--line); background:rgba(11,16,32,.85);
+}
+.top a { color:var(--muted); text-decoration:none; font-size:.95rem; }
+.top h1 { margin:0; font-size:1.1rem; white-space:nowrap; }
+.top h1 span { color:var(--on); }
+/* 28 livelli: pallini piu' piccoli, su piu' righe se serve */
+.livelli { display:flex; gap:4px; flex-wrap:wrap; margin-right:auto; flex:1 1 300px; }
+.livelli button {
+  width:28px; height:28px; border-radius:50%; border:2px solid var(--line); background:var(--panel);
+  font-weight:800; font-size:.75rem; display:grid; place-items:center; padding:0;
+}
+.livelli button.fatto { background:var(--ok); border-color:var(--ok); color:#04241a; }
+.livelli button.corrente { border-color:var(--on); box-shadow:0 0 0 3px rgba(255,216,77,.3); }
+.livelli button:disabled { opacity:.35; cursor:not-allowed; }
+.hud { display:flex; gap:8px; }
+.pill { background:var(--panel); border:1px solid var(--line); border-radius:999px; padding:4px 12px; font-family:var(--mono); font-size:.9rem; white-space:nowrap; }
+.pill b { color:var(--on); }
+
+/* ---------- layout a due colonne (come code.org) ---------- */
+.main { display:grid; gap:14px; padding:14px 16px max(16px, env(safe-area-inset-bottom)); max-width:1400px; margin:0 auto; }
+.sx { display:flex; flex-direction:column; gap:12px; min-width:0; }
+.sx > * { flex:none; }
+.sx { scrollbar-color:var(--line) transparent; scrollbar-width:thin; }
+@media (min-width:900px) {
+  /* la barra dei livelli puo' andare su due righe: il resto dello schermo va all'editor */
+  body { display:flex; flex-direction:column; height:100dvh; }
+  .main { grid-template-columns:minmax(320px, 420px) 1fr; flex:1; min-height:0; width:100%; }
+  .sx { overflow:auto; }
+}
+.card { background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:14px 16px; }
+.istruzioni h2 { margin:0 0 6px; font-size:1.15rem; }
+.istruzioni h2 small { color:var(--muted); font-weight:600; font-size:.85rem; margin-right:6px; }
+.istruzioni p { margin:0; color:#c9d0f2; }
+.istruzioni b { color:var(--on); }
+.obiettivo { margin-top:8px !important; font-size:.88rem; color:var(--muted) !important; }
+
+.scena { position:relative; border-radius:var(--radius); overflow:hidden; border:1px solid var(--line); aspect-ratio:1; background:#4fa457; }
+.scena svg { display:block; width:100%; height:100%; }
+.papera, .pulcino-seguace { transition:transform var(--passo, 300ms) ease-in-out; }
+.papera.sbatte .corpo { fill:#ff8a8a; }
+.scena .stagno-onda { animation:onda 2.4s ease-in-out infinite; transform-box:fill-box; transform-origin:center; }
+@keyframes onda { 50% { transform:scale(1.25); opacity:.2; } }
+
+.comandi { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+.btn { border:0; border-radius:12px; padding:12px 18px; font-weight:800; font-size:1.05rem; transition:transform .08s; }
+.btn:active { transform:scale(.97); }
+.btn.esegui { background:var(--run); color:#2a1500; flex:1; min-width:140px; }
+.btn.esegui:disabled { opacity:.5; cursor:wait; }
+.btn.secondario { background:var(--panel-2); border:1px solid var(--line); font-weight:600; font-size:.95rem; }
+.btn.primario { background:var(--accent); color:#04121c; }
+.velocita { display:flex; align-items:center; gap:6px; color:var(--muted); font-size:.9rem; }
+.velocita select { background:var(--panel-2); border:1px solid var(--line); border-radius:8px; padding:6px; }
+
+.esito { border-radius:12px; padding:12px 14px; font-weight:600; border:1px solid var(--line); background:var(--panel); }
+.esito.ko { border-color:var(--ko); color:#ffc2cd; background:rgba(255,92,122,.1); }
+.esito.ok { border-color:var(--ok); color:#bff5dd; background:rgba(61,220,151,.1); }
+.esito small { display:block; font-weight:400; color:var(--muted); margin-top:4px; }
+
+.codice { margin:0; font-family:var(--mono); font-size:.85rem; white-space:pre; overflow:auto; background:#0e1430; border-radius:10px; padding:12px; color:#bfe6ff; }
+.codice .k { color:#ff9fd4; } .codice .f { color:var(--on); } .codice .c { color:var(--muted); }
+.avviso { font-size:.88rem; color:var(--muted); }
+.avviso a { color:var(--accent); }
+
+/* ---------- editor a blocchi ---------- */
+.dx { display:grid; grid-template-rows:auto 1fr; gap:8px; min-height:0; }
+.barra-blocchi { display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; color:var(--muted); font-size:.9rem; }
+.barra-blocchi b { color:var(--text); font-family:var(--mono); }
+.barra-blocchi b.troppi { color:var(--run); }
+#blockly { min-height:420px; height:65dvh; border-radius:var(--radius); overflow:hidden; border:1px solid var(--line); }
+@media (min-width:900px) { #blockly { height:auto; } }
+.in-esecuzione #blockly { pointer-events:none; }
+.blocklyText { font-weight:700 !important; }
+
+/* ---------- finestre ---------- */
+dialog {
+  border:1px solid var(--line); border-radius:var(--radius); background:var(--panel); color:var(--text);
+  padding:22px; width:min(440px, calc(100vw - 32px)); max-height:calc(100dvh - 32px);
+}
+dialog::backdrop { background:rgba(4,8,20,.7); }
+dialog h2 { margin:0 0 10px; font-size:1.4rem; }
+dialog p { margin:0 0 10px; color:#c9d0f2; }
+.confronto { display:grid; gap:8px; margin:14px 0; }
+.confronto .riga { display:grid; grid-template-columns:5.5em 1fr 4.5em; align-items:center; gap:8px; font-size:.9rem; }
+.confronto .riga span:last-child { font-family:var(--mono); text-align:right; }
+.confronto .barra { height:12px; border-radius:6px; background:var(--accent); min-width:4px; }
+.confronto .riga.tu .barra { background:var(--on); }
+.punti-grandi { font-size:2.2rem; font-weight:900; color:var(--on); font-family:var(--mono); }
+.riepilogo { width:100%; border-collapse:collapse; margin:10px 0 14px; font-size:.9rem; }
+.riepilogo th, .riepilogo td { padding:6px 4px; border-bottom:1px solid var(--line); text-align:left; }
+.riepilogo td.num { text-align:right; font-family:var(--mono); }
+.dialog-azioni { display:flex; gap:10px; flex-wrap:wrap; }
+.dialog-azioni .btn { flex:1; }

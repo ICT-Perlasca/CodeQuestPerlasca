@@ -32,7 +32,7 @@
   };
 
   /**
-   * Missioni in ordine: le prime N sono quelle dell'Open Day (TIPI_GIORNATA in inc/db.php).
+   * Missioni in ordine: le prime N sono quelle dell'Open Day (TIPI_GIORNATA in inc/giornate.php).
    *   blocca    : variabili fissate dalla missione (non modificabili)
    *   canestro  : {x, y, r} cerchio da centrare con il centro della palla
    *   muro      : {x, y, w, h} ostacolo

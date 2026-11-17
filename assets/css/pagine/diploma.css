@@ -1,0 +1,59 @@
+body { margin:0; min-height:100dvh; background:radial-gradient(120% 60% at 50% 0%, #17204a 0%, var(--bg) 60%) fixed, var(--bg);
+       color:var(--text); font:16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color:transparent; }
+[hidden] { display:none !important; }
+.app { max-width:720px; margin:0 auto; padding:max(16px, env(safe-area-inset-top)) 16px max(20px, env(safe-area-inset-bottom)); display:grid; gap:16px; }
+h1 { margin:0; font-size:1.3rem; } h2 { margin:0; font-size:1.1rem; }
+p { margin:0; color:var(--muted); }
+a { color:var(--accent); }
+.indietro { font-size:.95rem; text-decoration:none; }
+.card { background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:20px; display:grid; gap:14px; }
+label { display:grid; gap:6px; color:var(--muted); font-size:.9rem; }
+input { font:inherit; font-size:1.15rem; padding:12px 14px; border-radius:10px; border:1px solid var(--line); background:#0e1430; color:var(--text); }
+input:focus { outline:2px solid var(--accent); outline-offset:1px; }
+.nota { font-size:.85rem; }
+.btn { font:inherit; font-weight:800; font-size:1.1rem; padding:14px; border:0; border-radius:12px; background:var(--accent); color:#04121c; cursor:pointer; touch-action:manipulation; }
+.btn:disabled { opacity:.6; cursor:default; }
+.btn.secondario { background:var(--panel-2); color:var(--text); border:1px solid var(--line); font-weight:700; }
+.errore { color:var(--ko); font-weight:600; }
+
+/* Anteprima: stesse proporzioni (A4 orizzontale) e disposizione del PDF, misure in cqw */
+.foglio { container-type:inline-size; aspect-ratio:297 / 210; background:#fff; color:#0b1020; border-radius:6px;
+          box-shadow:0 10px 30px rgba(0,0,0,.45); position:relative; overflow:hidden; }
+.foglio .cornice { position:absolute; inset:2.7cqw; border:.4cqw solid #0b1020; }
+.foglio .cornice::after { content:""; position:absolute; inset:.6cqw; border:.14cqw solid #5cc8ff; }
+.foglio .contenuto { position:absolute; inset:5cqw 6cqw; display:flex; flex-direction:column; align-items:center; text-align:center; }
+.foglio .bin { font:1cqw/1 ui-monospace, Menlo, Consolas, monospace; color:#a0c8e1; letter-spacing:.13cqw; }
+.foglio .scuola { margin-top:2.4cqw; font:700 1.55cqw/1 Helvetica, Arial, sans-serif; letter-spacing:.4cqw; }
+.foglio .indirizzo { margin-top:.9cqw; font:1.25cqw/1 Helvetica, Arial, sans-serif; color:#5f688c; }
+.foglio .titolo { margin-top:4cqw; font:700 3.3cqw/1 Helvetica, Arial, sans-serif; letter-spacing:.2cqw; }
+.foglio .data { margin-top:1.4cqw; padding-top:1.4cqw; border-top:.27cqw solid #5cc8ff; font:700 1.3cqw/1 Helvetica, Arial, sans-serif;
+                color:#0a6eaa; letter-spacing:.5cqw; text-transform:uppercase; }
+.foglio .attesta { margin-top:2.9cqw; font:italic 1.8cqw/1 "Times New Roman", Times, serif; color:#5f688c; }
+.foglio .nome { margin-top:1.5cqw; padding:0 3cqw .9cqw; min-width:27cqw; border-bottom:.2cqw solid #c89600;
+                font:700 4cqw/1.1 "Times New Roman", Times, serif; max-width:100%; overflow-wrap:anywhere; }
+.foglio .codice-nick { margin-top:1cqw; font:1.25cqw/1 Helvetica, Arial, sans-serif; color:#5f688c; }
+.foglio .testo { margin-top:2cqw; max-width:72cqw; font:1.6cqw/1.4 "Times New Roman", Times, serif; }
+.foglio .testo.lungo { font-size:1.3cqw; } /* come nel PDF, che riduce il corpo per stare in 3 righe */
+.foglio .box { display:flex; gap:2.7cqw; margin-top:2.6cqw; }
+.foglio .box div { width:18cqw; padding:1.1cqw 0 .9cqw; background:#eef7fd; border:.1cqw solid #5cc8ff; }
+.foglio .box b { display:block; font:700 2cqw/1 Helvetica, Arial, sans-serif; }
+.foglio .box span { display:block; margin-top:.6cqw; font:.85cqw/1 Helvetica, Arial, sans-serif; color:#5f688c; letter-spacing:.17cqw; }
+.foglio .sigillo { position:absolute; left:50%; bottom:5.3cqw; translate:-50% 0; width:8.4cqw; aspect-ratio:1; border-radius:50%;
+                   background:#ffd84d; border:.17cqw solid #c89600; box-shadow:inset 0 0 0 .55cqw #ffd84d, inset 0 0 0 .72cqw #c89600;
+                   display:grid; place-content:center; font:700 .9cqw/1.25 Helvetica, Arial, sans-serif; letter-spacing:.13cqw; }
+.foglio .motto { position:absolute; right:10.1cqw; bottom:7.2cqw; font:1cqw/1.6 Helvetica, Arial, sans-serif; color:#5f688c; text-align:right; }
+.foglio .motto i { font:italic 1.45cqw/1 "Times New Roman", Times, serif; color:#0b1020; }
+.foglio .paperelle { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+.foglio .medaglia { font-size:.8cqw; line-height:1.1; }
+.foglio .medaglia b { display:block; font-size:2.4cqw; letter-spacing:0; }
+.podio-card { border-color:#c89600; background:linear-gradient(135deg, #2a2410, var(--panel) 60%); }
+.podio-card b { color:var(--on); }
+.foglio .num { position:absolute; left:8cqw; bottom:7.2cqw; font:1cqw/1.6 Helvetica, Arial, sans-serif; color:#5f688c; text-align:left; }
+
+.qr-area { display:grid; justify-items:center; gap:10px; }
+.qr-box { position:relative; width:min(260px, 100%); aspect-ratio:1; background:#fff; border-radius:14px; padding:10px; }
+.qr-box svg { display:block; width:100%; height:100%; }
+.qr-box.scaduto svg { opacity:.12; }
+.qr-box .timbro { position:absolute; inset:0; display:grid; place-items:center; color:#0b1020; font-weight:800; font-size:1.2rem; }
+.countdown { font-family:ui-monospace, Menlo, Consolas, monospace; font-weight:800; color:var(--on); font-size:1.1rem; }
+.avviso { padding:12px 14px; border-radius:12px; border:1px solid #6b5a1f; background:#2a2410; color:#ffe9a3; font-size:.9rem; }

@@ -25,7 +25,7 @@ const DB_SOCKET = ''; // vuoto = connessione via host
 const OSPITE_USER = 'openday';
 const OSPITE_PASS = 'binario101';
 
-// Hash della password di admin.php. Generalo con:
+// Hash della password dell'admin. Generalo con:
 //   php -r 'echo password_hash("la-tua-password", PASSWORD_DEFAULT), PHP_EOL;'
 const ADMIN_PASS_HASH = '';
 

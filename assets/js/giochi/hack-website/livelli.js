@@ -12,7 +12,7 @@
  *   aiuti         : suggerimenti mostrati uno alla volta col pulsante "Aiuto"
  *   console       : true = serve la Console (la scheda lampeggia)
  *
- * I numeri dei livelli (da 1) usati in TIPI_GIORNATA (inc/db.php, hack_livelli) sono
+ * I numeri dei livelli (da 1) usati in TIPI_GIORNATA (inc/giornate.php, hack_livelli) sono
  * le posizioni in questo array: aggiungere livelli SOLO in fondo.
  */
 (function () {

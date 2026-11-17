@@ -70,16 +70,3 @@ $_SESSION['uuid'] = $uuid;
 $st = $pdo->prepare('SELECT uuid, nickname, avatar, punti_totali FROM partecipanti WHERE sessione_id = ? AND uuid = ?');
 $st->execute([$sid, $uuid]);
 json_out(['ok' => true, 'partecipante' => $st->fetch()]);
-
-/** Confronta il nickname normalizzato con la blacklist (per sottostringa). */
-function nickname_ammesso(string $nickname): bool
-{
-    $norm = normalizza_nickname($nickname);
-
-    foreach (db()->query('SELECT parola FROM blacklist')->fetchAll(PDO::FETCH_COLUMN) as $parola) {
-        if ($parola !== '' && str_contains($norm, mb_strtolower($parola))) {
-            return false;
-        }
-    }
-    return true;
-}

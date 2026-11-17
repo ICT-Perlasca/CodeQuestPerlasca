@@ -1,0 +1,168 @@
+:root {
+  --on-glow: rgba(255, 216, 77, .55);
+  --off: #262e52;
+}
+html, body { margin: 0; }
+body {
+  min-height: 100dvh;
+  background: radial-gradient(120% 60% at 50% 0%, #17204a 0%, var(--bg) 60%) fixed, var(--bg);
+  color: var(--text);
+  font: 16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+}
+button { font: inherit; color: inherit; touch-action: manipulation; cursor: pointer; }
+[hidden] { display: none !important; }
+
+.app {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: max(14px, env(safe-area-inset-top)) 16px max(18px, env(safe-area-inset-bottom));
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* ---------- barra superiore ---------- */
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.top a { color: var(--muted); text-decoration: none; font-size: .95rem; padding: 6px 0; }
+.top h1 { margin: 0; font-size: 1.1rem; letter-spacing: .02em; }
+.top h1 span { color: var(--on); }
+.hud { display: flex; gap: 8px; }
+.pill {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 999px;
+  padding: 4px 12px; font-family: var(--mono); font-size: .9rem; white-space: nowrap;
+}
+.pill b { color: var(--on); }
+
+/* ---------- schede (intro / fine) ---------- */
+.card {
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 20px; display: grid; gap: 14px;
+}
+.card h2 { margin: 0; font-size: 1.5rem; }
+.card p { margin: 0; color: var(--muted); }
+.card ol { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; }
+.esempio {
+  font-family: var(--mono); background: var(--panel-2); border-radius: 12px; padding: 12px;
+  display: grid; gap: 4px; font-size: .95rem;
+}
+.esempio .uno { color: var(--on); font-weight: 700; }
+.btn {
+  border: 0; border-radius: 14px; padding: 16px; font-weight: 800; font-size: 1.15rem;
+  background: var(--accent); color: #04121c; transition: transform .08s;
+}
+.btn:active { transform: scale(.97); }
+.btn.secondario { background: var(--panel-2); color: var(--text); border: 1px solid var(--line); font-weight: 600; }
+.btn:focus-visible, .bulb:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.azioni { display: grid; gap: 10px; }
+
+/* ---------- obiettivo + timer ---------- */
+.target {
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 14px 16px 16px; display: grid; gap: 10px; text-align: center;
+}
+.target .lbl { color: var(--muted); font-size: .9rem; text-transform: uppercase; letter-spacing: .08em; }
+.target strong {
+  font-family: var(--mono); font-size: clamp(3.2rem, 18vw, 5rem); line-height: 1; color: var(--text);
+}
+.timer { position: relative; height: 10px; border-radius: 999px; background: var(--panel-2); overflow: hidden; }
+.timer .fill {
+  position: absolute; inset: 0; background: var(--accent); transform-origin: left center;
+  border-radius: inherit; will-change: transform;
+}
+.timer.urgente .fill { background: var(--ko); }
+.secondi { font-family: var(--mono); font-size: .9rem; color: var(--muted); }
+.timer.urgente + .secondi { color: var(--ko); font-weight: 700; }
+
+/* ---------- lampadine ---------- */
+.bulbs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+.bulb {
+  position: relative;
+  display: grid; justify-items: center; gap: 6px;
+  padding: 10px 4px 10px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  transition: border-color .15s, background-color .15s, transform .08s;
+  min-height: 120px;
+}
+.bulb:active { transform: scale(.95); }
+.bulb .bit { font-family: var(--mono); font-size: 1.25rem; font-weight: 800; color: var(--muted); }
+.bulb .lamp {
+  width: clamp(42px, 13vw, 58px); aspect-ratio: 1; border-radius: 50%;
+  background: var(--off);
+  box-shadow: inset 0 -6px 0 rgba(0,0,0,.25);
+  transition: background .15s, box-shadow .2s;
+  position: relative;
+}
+.bulb .lamp::after { /* attacco della lampadina */
+  content: ""; position: absolute; left: 30%; right: 30%; bottom: -8px; height: 9px;
+  background: #4a5486; border-radius: 0 0 4px 4px;
+}
+.bulb .peso { font-family: var(--mono); font-size: .95rem; color: var(--muted); margin-top: 4px; }
+
+.bulb.on { border-color: var(--on); background: #221f2a; }
+.bulb.on .bit { color: var(--on); }
+.bulb.on .peso { color: var(--text); font-weight: 700; }
+.bulb.on .lamp {
+  background: radial-gradient(circle at 35% 30%, #fffbe6 0%, var(--on) 45%, #e0a800 100%);
+  box-shadow: 0 0 22px 4px var(--on-glow), 0 0 60px 6px rgba(255, 216, 77, .2);
+}
+/* soluzione mostrata a tempo scaduto */
+.bulb.sol { border-style: dashed; border-color: var(--accent); }
+.bulb.sol .lamp { background: rgba(92, 200, 255, .35); box-shadow: 0 0 18px rgba(92, 200, 255, .5); }
+.bulbs.vinto .bulb.on { border-color: var(--ok); }
+.bulbs.vinto .bulb.on .lamp {
+  background: radial-gradient(circle at 35% 30%, #eafff5 0%, var(--ok) 50%, #1f9e68 100%);
+  box-shadow: 0 0 26px 6px rgba(61, 220, 151, .55);
+}
+
+/* ---------- lettura binario/decimale ---------- */
+.readout {
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+}
+.readout code { font-family: var(--mono); font-size: 1.35rem; letter-spacing: .12em; color: var(--on); }
+.readout .expr { font-family: var(--mono); font-size: 1rem; color: var(--text); }
+.readout .expr.oltre { color: var(--ko); }
+.readout .expr.oltre::after { content: "  troppo!"; font-size: .85rem; }
+
+.comandi { display: grid; grid-template-columns: 1fr; }
+
+/* ---------- toast feedback ---------- */
+.toast {
+  position: fixed; left: 50%; top: 38%; transform: translate(-50%, -50%) scale(.8);
+  padding: 14px 22px; border-radius: 16px; font-weight: 800; font-size: 1.4rem;
+  background: var(--panel-2); border: 1px solid var(--line); opacity: 0; pointer-events: none;
+  transition: opacity .2s, transform .25s cubic-bezier(.2, 1.4, .4, 1);
+  text-align: center; max-width: calc(100% - 32px);
+}
+.toast.vis { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+.toast.ok { color: var(--ok); border-color: var(--ok); }
+.toast.ko { color: var(--ko); border-color: var(--ko); }
+.toast small { display: block; font-size: .95rem; font-weight: 600; color: var(--muted); font-family: var(--mono); }
+
+/* ---------- fine partita ---------- */
+.punteggio-finale { font-family: var(--mono); font-size: 3.2rem; font-weight: 800; color: var(--on); line-height: 1; }
+.stat { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.stat div { background: var(--panel-2); border-radius: 12px; padding: 10px; text-align: center; }
+.stat b { display: block; font-family: var(--mono); font-size: 1.3rem; }
+.stat span { font-size: .8rem; color: var(--muted); }
+.salvataggio { font-size: .95rem; }
+.salvataggio.ok { color: var(--ok); }
+.salvataggio.ko { color: var(--ko); }
+
+/* ---------- desktop / tablet: 8 lampadine in riga ---------- */
+@media (min-width: 640px) {
+  .bulbs { grid-template-columns: repeat(8, 1fr); gap: 8px; }
+  .bulb:nth-child(4) { margin-right: 10px; } /* separa i due nibble */
+  .comandi { grid-template-columns: 1fr 1fr; gap: 10px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; }
+}

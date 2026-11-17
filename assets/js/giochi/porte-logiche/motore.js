@@ -179,7 +179,7 @@
       uscite: [{ id: 'L', da: 'g4' }],
       vuole: (x) => x.A !== x.B },
 
-    // ---- livelli difficili: all'Open Day si giocano dopo le scatole misteriose (inc/db.php) ----
+    // ---- livelli difficili: all'Open Day si giocano dopo le scatole misteriose (inc/giornate.php) ----
     { titolo: 'Specchi',
       testo: 'Ogni NOT ribalta il bit, come uno specchio. Un solo codice accende la lampadina: trovalo contando gli specchi, non provando a caso!',
       tipo: 'accendi', ingressi: ['A', 'B', 'C'],

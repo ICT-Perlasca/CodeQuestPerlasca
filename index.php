@@ -4,7 +4,7 @@
  */
 declare(strict_types=1);
 
-require_once __DIR__ . '/inc/db.php';
+require_once __DIR__ . '/inc/bootstrap.php';
 
 avvia_sessione();
 if (!ospite_collegato()) {
@@ -22,7 +22,7 @@ if (isset($_SESSION['uuid'])) {
     }
 }
 
-$giochi = sessione_attivita()['giochi']; // Open Day corto, laboratorio lungo (admin.php)
+$giochi = sessione_attivita()['giochi']; // Open Day corto, laboratorio lungo (admin)
 $percorso = [
   ['codice' => 'paperelle_coding', 'icona' => '🦆', 'colore' => '#ffd84d', 'titolo' => 'Duck Coding',       'desc' => 'Programma a blocchi e porta le paperelle allo stagno', 'href' => 'giochi/paperelle.php'],
   ['codice' => 'binary_lights',    'icona' => '🔢', 'colore' => '#5cc8ff', 'titolo' => 'Binary Lights',     'desc' => 'Componi numeri con 8 bit',                           'href' => 'giochi/binary-lights.php'],
@@ -81,101 +81,8 @@ $e = static fn(string $s): string => htmlspecialchars($s, ENT_QUOTES);
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b1020">
 <title>CodeQuestPerlasca · Informatica</title>
-<style>
-  :root { --bg:#0b1020; --panel:#141b33; --panel-2:#1c2547; --line:#2a3566; --text:#e8ecff; --muted:#8e98c7;
-          --on:#ffd84d; --ok:#3ddc97; --ko:#ff5c7a; --accent:#5cc8ff; --radius:16px; }
-  * { box-sizing:border-box; }
-  body { margin:0; min-height:100dvh; background:radial-gradient(120% 60% at 50% 0%, #17204a 0%, var(--bg) 60%) fixed, var(--bg);
-         color:var(--text); font:16px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color:transparent; }
-  [hidden] { display:none !important; }
-  .app { max-width:640px; margin:0 auto; padding:max(16px, env(safe-area-inset-top)) 16px max(20px, env(safe-area-inset-bottom)); display:grid; gap:16px; }
-  h1 { margin:0; font-size:1.3rem; } h2 { margin:0; font-size:1.1rem; }
-  p { margin:0; color:var(--muted); }
-  .card { background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:20px; display:grid; gap:14px; }
-  label { display:grid; gap:6px; color:var(--muted); font-size:.9rem; }
-  input { font:inherit; font-size:1.15rem; padding:12px 14px; border-radius:10px; border:1px solid var(--line); background:#0e1430; color:var(--text); }
-  input:focus { outline:2px solid var(--accent); outline-offset:1px; }
-  .btn { font:inherit; font-weight:800; font-size:1.1rem; padding:14px; border:0; border-radius:12px; background:var(--accent); color:#04121c; cursor:pointer; touch-action:manipulation; }
-  .btn.secondario { background:var(--panel-2); color:var(--text); border:1px solid var(--line); font-weight:600; font-size:.95rem; padding:10px 14px; }
-  .avatar-row { display:flex; align-items:center; gap:14px; }
-  .avatar-row .testo { flex:1; min-width:0; }
-  .avatar-row .testo b { display:block; }
-  .avatar-row .testo p { font-size:.9rem; }
-  .avatar { font-size:2.6rem; width:64px; height:64px; display:grid; place-items:center; background:var(--panel-2); border-radius:16px; border:1px solid var(--line); }
-  .avatar-btn { flex:none; position:relative; font-family:inherit; color:inherit; padding:0; cursor:pointer; touch-action:manipulation; transition:transform .1s, border-color .15s; }
-  .avatar-btn:active { transform:scale(.94); }
-  .avatar-btn:focus-visible, .avatar-griglia button:focus-visible { outline:3px solid var(--accent); outline-offset:2px; }
-  .avatar-btn::after { /* badge "modifica" */
-    content:"✎"; position:absolute; right:-6px; bottom:-6px; width:24px; height:24px; border-radius:50%;
-    display:grid; place-items:center; font-size:.8rem; font-weight:800; background:var(--accent); color:#04121c; }
-  .avatar-btn[aria-expanded="true"] { border-color:var(--accent); }
-  .avatar-griglia { display:grid; gap:12px; padding:12px; border-radius:14px; background:#0e1430; border:1px solid var(--line);
-                    max-height:min(55vh, 440px); overflow-y:auto; overscroll-behavior:contain; }
-  .avatar-griglia h3 { margin:0 0 6px; font-size:.75rem; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; }
-  .avatar-griglia .gruppo { display:grid; grid-template-columns:repeat(auto-fill, minmax(46px, 1fr)); gap:6px; }
-  .avatar-griglia button { aspect-ratio:1; padding:0; font-size:1.65rem; line-height:1; border-radius:12px; border:2px solid transparent;
-                           background:var(--panel-2); cursor:pointer; touch-action:manipulation; }
-  .avatar-griglia button[aria-checked="true"] { border-color:var(--accent); background:#173049; }
-  .avatar-griglia button:active { transform:scale(.92); }
-  .errore { color:var(--ko); font-weight:600; min-height:1.4em; }
-  .profilo { display:flex; align-items:center; gap:12px; }
-  .profilo .avatar { width:52px; height:52px; font-size:2rem; }
-  .profilo b { display:block; font-size:1.15rem; }
-  .punti { margin-left:auto; font-family:ui-monospace, Menlo, Consolas, monospace; color:var(--on); font-weight:800; font-size:1.2rem; white-space:nowrap; }
-  .hero { position:relative; overflow:hidden; border-radius:22px; padding:20px; border:1px solid var(--line); background:linear-gradient(135deg, #1b2a6b, #141b33 60%); display:grid; gap:14px; }
-  .hero::before { content:"01001000 01000001 01000011 01001011"; position:absolute; right:-10px; top:6px; width:120px; word-break:break-all; line-height:1.6;
-                  font:700 .7rem ui-monospace, monospace; color:#5cc8ff22; pointer-events:none; }
-  .kicker { font-size:.72rem; letter-spacing:.12em; text-transform:uppercase; color:var(--accent); font-weight:700; }
-  .hero .profilo .avatar { width:68px; height:68px; font-size:2.4rem; border:2px solid var(--accent); border-radius:20px; }
-  .hero .profilo b { font-size:1.3rem; }
-  .pt { margin-left:auto; text-align:right; position:relative; }
-  .pt strong { display:block; font:800 1.9rem ui-monospace, Menlo, Consolas, monospace; color:var(--on); line-height:1; }
-  .pt span { font-size:.75rem; color:var(--muted); }
-  .bar { height:10px; border-radius:99px; background:var(--bg); overflow:hidden; border:1px solid var(--line); }
-  .bar i { display:block; height:100%; background:linear-gradient(90deg, var(--accent), var(--ok)); border-radius:99px; transition:width .4s; }
-  .avanzamento p { font-size:.82rem; margin-top:6px; }
-  .griglia-giochi { list-style:none; margin:0; padding:0; display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-  .griglia-giochi li:last-child:nth-child(odd) { grid-column:1 / -1; }
-  .gioco { position:relative; display:grid; gap:8px; align-content:start; height:100%; padding:16px; border-radius:var(--radius); background:var(--panel);
-           border:1px solid var(--line); color:inherit; text-decoration:none; overflow:hidden; transition:transform .12s, border-color .15s; }
-  a.gioco:hover { border-color:var(--c); transform:translateY(-2px); }
-  a.gioco:active { transform:scale(.97); }
-  .gioco::after { content:""; position:absolute; inset:auto -30% -60% -30%; height:100%; background:radial-gradient(closest-side, var(--c), transparent); opacity:.18; pointer-events:none; }
-  .gioco .ico { width:52px; height:52px; border-radius:16px; display:grid; place-items:center; font-size:1.7rem;
-                background:color-mix(in srgb, var(--c) 22%, transparent); border:1px solid color-mix(in srgb, var(--c) 55%, transparent); }
-  .gioco b { font-size:1rem; }
-  .gioco small { color:var(--muted); font-size:.8rem; line-height:1.3; }
-  .gioco .stato { display:flex; justify-content:space-between; align-items:center; gap:6px; font-size:.75rem; color:var(--muted); margin-top:4px; position:relative; }
-  .chip { border-radius:99px; padding:2px 9px; border:1px solid var(--line); font-weight:700; white-space:nowrap; }
-  .chip.ok { color:var(--ok); border-color:#3ddc9755; }
-  .chip.corso { color:var(--accent); border-color:#5cc8ff55; }
-  .gioco.off { opacity:.45; filter:grayscale(.8); }
-  .diploma { display:flex; align-items:center; gap:14px; padding:18px; border-radius:var(--radius); text-decoration:none; color:#1a1300; font-weight:700;
-             background:linear-gradient(135deg, #ffd84d, #ffb347); }
-  .diploma .i { font-size:2rem; }
-  .diploma small { display:block; font-weight:500; opacity:.75; }
-  .titolo-sfide { display:flex; align-items:center; justify-content:space-between; gap:10px; }
-  .btn-aiuto { font:inherit; font-size:.85rem; font-weight:700; color:var(--accent); background:transparent; border:1px solid var(--line); border-radius:99px; padding:5px 12px; cursor:pointer; touch-action:manipulation; }
-  .intro { position:fixed; inset:0; z-index:50; display:grid; place-items:center; padding:16px; background:rgba(5,8,20,.82); }
-  .intro-box { width:100%; max-width:460px; max-height:calc(100dvh - 32px); overflow-y:auto; border-radius:22px; border:1px solid var(--line); padding:22px 20px 18px;
-               background:linear-gradient(160deg, #1b2a6b, #141b33 55%); display:grid; gap:16px; }
-  .slide { display:none; gap:12px; }
-  .slide.on { display:grid; }
-  .slide .grande { font-size:2.6rem; line-height:1; }
-  .slide h2 { font-size:1.35rem; }
-  .slide p { color:var(--text); }
-  .passi { list-style:none; margin:0; padding:0; display:grid; gap:10px; }
-  .passi li { display:flex; gap:12px; align-items:flex-start; }
-  .passi .n { flex:none; width:34px; height:34px; border-radius:50%; display:grid; place-items:center; background:var(--panel-2); border:1px solid var(--line); font-size:1.1rem; }
-  .passi b { display:block; }
-  .passi span.t { color:var(--muted); font-size:.88rem; }
-  .intro-nav { display:flex; align-items:center; justify-content:space-between; gap:10px; }
-  .puntini { display:flex; gap:7px; }
-  .puntini i { width:9px; height:9px; border-radius:50%; background:var(--line); }
-  .puntini i.on { background:var(--accent); }
-  .intro-nav .btn { padding:11px 18px; font-size:1rem; }
-  .intro-salta { background:transparent; border:0; color:var(--muted); font:inherit; font-size:.85rem; cursor:pointer; padding:6px; }
-</style>
+<link rel="stylesheet" href="<?= asset('css/tema.css', '') ?>">
+<link rel="stylesheet" href="<?= asset('css/pagine/home.css', '') ?>">
 </head>
 <body>
 <main class="app">
@@ -286,212 +193,9 @@ $e = static fn(string $s): string => htmlspecialchars($s, ENT_QUOTES);
   </div>
 </div>
 
-<script src="assets/js/avatar.js"></script>
-<script>
-'use strict';
-const AVATAR = window.AVATAR;
-const profiloServer = <?= json_encode($profilo, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) ?>;
-
-const storage = {
-  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
-  set(k, v) { try { localStorage.setItem(k, v); } catch { /* ignora */ } },
-};
-
-// Stesso telefono in una sessione diversa (prima la demo, poi l'attivita'): serve un profilo nuovo.
-// Senza questo, l'identificativo della demo resterebbe e i progressi dei giochi (legati a lui) sembrerebbero gia' fatti.
-const SESSIONE_ID = '<?= (int) sessione_id_corrente() ?>';
-if (storage.get('od_sessione') !== SESSIONE_ID) {
-  try { localStorage.removeItem('od_uuid'); } catch { /* ignora */ }
-  storage.set('od_sessione', SESSIONE_ID);
-}
-
-// UUIDv4 anche su http:// in LAN, dove crypto.randomUUID non esiste
-function uuidv4() {
-  if (crypto.randomUUID) return crypto.randomUUID();
-  const b = crypto.getRandomValues(new Uint8Array(16));
-  b[6] = (b[6] & 0x0f) | 0x40;
-  b[8] = (b[8] & 0x3f) | 0x80;
-  const h = [...b].map((x) => x.toString(16).padStart(2, '0')).join('');
-  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
-}
-
-const chiavi = Object.keys(AVATAR);
-const $ = (id) => document.getElementById(id);
-const avatarCasuale = () => chiavi[Math.floor(Math.random() * chiavi.length)];
-
-let avatar = AVATAR[storage.get('od_avatar')] ? storage.get('od_avatar') : avatarCasuale();
-let profilo = profiloServer;
-
-/**
- * Collega un riquadro avatar (bottone) a una griglia di scelta raggruppata per categoria.
- * Toccare il riquadro apre/chiude la griglia; scegliere un'icona chiama onScelta e la chiude.
- */
-function creaSceltaAvatar(bottone, griglia, attuale, onScelta) {
-  for (const gruppo of window.AVATAR_GRUPPI) {
-    const sezione = document.createElement('section');
-    const titolo = document.createElement('h3');
-    titolo.textContent = gruppo.nome;
-    const box = document.createElement('div');
-    box.className = 'gruppo';
-    for (const [chiave, emoji] of Object.entries(gruppo.voci)) {
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.dataset.avatar = chiave;
-      b.textContent = emoji;
-      b.setAttribute('role', 'radio');
-      b.setAttribute('aria-label', chiave);
-      box.append(b);
-    }
-    sezione.append(titolo, box);
-    griglia.append(sezione);
-  }
-
-  const apri = (aperta) => {
-    griglia.hidden = !aperta;
-    bottone.setAttribute('aria-expanded', String(aperta));
-    if (!aperta) return;
-    griglia.querySelectorAll('[data-avatar]').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.avatar === attuale())));
-    const scelto = griglia.querySelector('[aria-checked="true"]');
-    if (scelto) griglia.scrollTop = scelto.offsetTop - griglia.offsetTop - 40;
-  };
-
-  bottone.addEventListener('click', () => apri(griglia.hidden));
-  griglia.addEventListener('click', (ev) => {
-    const b = ev.target.closest('[data-avatar]');
-    if (!b) return;
-    apri(false);
-    onScelta(b.dataset.avatar);
-    bottone.focus();
-  });
-  griglia.addEventListener('keydown', (ev) => {
-    if (ev.key === 'Escape') { apri(false); bottone.focus(); }
-  });
-}
-
-async function registra(uuid, nickname, avatarScelto) {
-  const res = await fetch('api/register.php', {
-    method: 'POST',
-    credentials: 'same-origin',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ uuid, nickname, avatar: avatarScelto }),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (res.status === 401) { location.href = 'login.php'; return null; }
-  if (!res.ok || !data.ok) throw new Error(data.errore || `Errore ${res.status}`);
-  storage.set('od_uuid', uuid);
-  storage.set('od_nick', nickname);
-  storage.set('od_avatar', avatarScelto);
-  return data.partecipante;
-}
-
-const mostraAvatar = () => { $('avatar-preview').textContent = AVATAR[avatar]; };
-
-function mostraDashboard(p) {
-  profilo = p;
-  $('dash-avatar').textContent = AVATAR[p.avatar] || '🤖';
-  $('dash-nick').textContent = p.nickname;
-  $('dash-punti').textContent = p.punti_totali;
-  $('onboarding').hidden = true;
-  $('intestazione').hidden = true;
-  $('dashboard').hidden = false;
-}
-
-/* ---------- onboarding ---------- */
-creaSceltaAvatar($('avatar-preview'), $('avatar-griglia'), () => avatar, (scelto) => {
-  avatar = scelto;
-  mostraAvatar();
-});
-
-$('btn-avatar').addEventListener('click', () => {
-  let nuovo;
-  do { nuovo = avatarCasuale(); } while (nuovo === avatar);
-  avatar = nuovo;
-  mostraAvatar();
-  $('avatar-griglia').hidden = true;
-  $('avatar-preview').setAttribute('aria-expanded', 'false');
-});
-
-$('onboarding').addEventListener('submit', async (ev) => {
-  ev.preventDefault();
-  const uuid = storage.get('od_uuid') || uuidv4();
-  $('errore').textContent = '';
-  $('btn-entra').disabled = true;
-  try {
-    const p = await registra(uuid, $('nickname').value.trim(), avatar);
-    if (p) { mostraDashboard(p); introSeNuovo(); }
-  } catch (err) {
-    $('errore').textContent = err.message;
-  } finally {
-    $('btn-entra').disabled = false;
-  }
-});
-
-/* ---------- cambio avatar dalla dashboard ---------- */
-creaSceltaAvatar($('dash-avatar'), $('dash-griglia'), () => profilo && profilo.avatar, async (scelto) => {
-  if (!profilo || scelto === profilo.avatar) return;
-  const errore = $('dash-errore');
-  const precedente = profilo.avatar;
-  errore.hidden = true;
-  $('dash-avatar').textContent = AVATAR[scelto]; // aggiornamento immediato, annullato in caso di errore
-  try {
-    const p = await registra(profilo.uuid || storage.get('od_uuid'), profilo.nickname, scelto);
-    if (p) mostraDashboard({ ...profilo, ...p });
-  } catch (err) {
-    $('dash-avatar').textContent = AVATAR[precedente] || '🤖';
-    errore.textContent = err.message;
-    errore.hidden = false;
-  }
-});
-
-
-/* ---------- introduzione a due slide ---------- */
-const intro = $('intro');
-const slide = intro.querySelectorAll('.slide');
-const puntini = intro.querySelectorAll('.puntini i');
-let slideAttuale = 0;
-
-function mostraSlide(n) {
-  slideAttuale = n;
-  slide.forEach((el, i) => el.classList.toggle('on', i === n));
-  puntini.forEach((el, i) => el.classList.toggle('on', i === n));
-  $('intro-avanti').textContent = n === slide.length - 1 ? 'Inizia!' : 'Avanti';
-  $('intro-salta').hidden = n === slide.length - 1;
-}
-function apriIntro() {
-  mostraSlide(0);
-  intro.hidden = false;
-  $('intro-avanti').focus();
-}
-function chiudiIntro() {
-  intro.hidden = true;
-  storage.set('od_intro', '1');
-}
-$('intro-avanti').addEventListener('click', () => {
-  if (slideAttuale < slide.length - 1) mostraSlide(slideAttuale + 1); else chiudiIntro();
-});
-$('intro-salta').addEventListener('click', chiudiIntro);
-$('btn-intro').addEventListener('click', apriIntro);
-document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && !intro.hidden) chiudiIntro(); });
-let tocco = null; // scorrimento col dito tra le due slide
-intro.addEventListener('touchstart', (ev) => { tocco = ev.touches[0].clientX; }, { passive: true });
-intro.addEventListener('touchend', (ev) => {
-  if (tocco === null) return;
-  const dx = ev.changedTouches[0].clientX - tocco;
-  tocco = null;
-  if (dx < -50 && slideAttuale < slide.length - 1) mostraSlide(slideAttuale + 1);
-  if (dx > 50 && slideAttuale > 0) mostraSlide(slideAttuale - 1);
-});
-// la prima volta compare da sola, appena c'e' un profilo
-const introSeNuovo = () => { if (!storage.get('od_intro')) apriIntro(); };
-
-if (profiloServer) {
-  if (!storage.get('od_uuid')) storage.set('od_uuid', profiloServer.uuid);
-  mostraDashboard(profiloServer);
-  introSeNuovo();
-} else {
-  $('nickname').value = storage.get('od_nick') || '';
-  mostraAvatar();
-}
-</script>
+<script src="<?= asset('js/comune/avatar.js') ?>"></script>
+<script>const OD = { profilo: <?= json_encode($profilo, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) ?>, sessioneId: <?= (int) sessione_id_corrente() ?> };</script>
+<script src="<?= asset('js/comune/storage.js', '') ?>"></script>
+<script src="<?= asset('js/pagine/home.js', '') ?>"></script>
 </body>
 </html>

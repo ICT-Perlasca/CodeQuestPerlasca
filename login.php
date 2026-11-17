@@ -4,7 +4,7 @@
  */
 declare(strict_types=1);
 
-require_once __DIR__ . '/inc/db.php';
+require_once __DIR__ . '/inc/bootstrap.php';
 
 avvia_sessione();
 
@@ -57,20 +57,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>CodeQuestPerlasca · Accesso</title>
-<style>
-  :root { --bg:#0b1020; --panel:#141b33; --line:#2a3566; --text:#e8ecff; --muted:#8e98c7; --accent:#5cc8ff; --ko:#ff5c7a; }
-  * { box-sizing:border-box; }
-  body { margin:0; min-height:100dvh; display:grid; place-items:center; padding:16px;
-         background:var(--bg); color:var(--text); font:16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
-  form { width:100%; max-width:360px; background:var(--panel); border:1px solid var(--line); border-radius:16px; padding:24px; display:grid; gap:14px; }
-  h1 { margin:0; font-size:1.4rem; }
-  p { margin:0; color:var(--muted); font-size:.95rem; }
-  label { display:grid; gap:6px; font-size:.9rem; color:var(--muted); }
-  input { font:inherit; font-size:1.1rem; padding:12px 14px; border-radius:10px; border:1px solid var(--line); background:#0e1430; color:var(--text); }
-  input:focus { outline:2px solid var(--accent); outline-offset:1px; }
-  button { font:inherit; font-weight:700; font-size:1.1rem; padding:14px; border:0; border-radius:12px; background:var(--accent); color:#04121c; cursor:pointer; }
-  .errore { color:var(--ko); font-weight:600; }
-</style>
+<link rel="stylesheet" href="<?= asset('css/tema.css', '') ?>">
+<link rel="stylesheet" href="<?= asset('css/pagine/login.css', '') ?>">
 </head>
 <body>
 <form method="post" autocomplete="off">

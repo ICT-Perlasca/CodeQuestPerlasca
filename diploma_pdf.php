@@ -10,7 +10,7 @@
  */
 declare(strict_types=1);
 
-require_once __DIR__ . '/inc/diploma.php';
+require_once __DIR__ . '/inc/attestato.php';
 
 /** Pagina d'errore leggibile da telefono (chi arriva dal QR non ha l'app aperta). */
 function errore_pagina(int $codice, string $titolo, string $messaggio): never

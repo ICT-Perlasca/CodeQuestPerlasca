@@ -13,6 +13,8 @@ Web app PHP/MySQL per l'Open Day di Informatica: gli ospiti accedono con un acco
 
 ## Documentazione
 
+Guide complete e dettagli tecnici in [`docs/`](docs/README.md) (installazione, deploy, pannello admin, giorno dell'evento, architettura, database, API, giochi, attestato, manutenzione, problemi, sicurezza).
+
 [Guida per docenti e tutor](https://claude.ai/artifact/5jzNq4BeBaHSHD2UWiVFzA): come preparare e gestire la giornata dal pannello admin.
 
 ## Struttura
@@ -24,10 +26,9 @@ Web app PHP/MySQL per l'Open Day di Informatica: gli ospiti accedono con un acco
 | `diploma.php`, `diploma_pdf.php` | attestato |
 | `giochi/` | i minigiochi |
 | `api/` | endpoint JSON |
-| `inc/` | configurazione, DB, librerie (protetta da `.htaccess`) |
-| `assets/` | JS/CSS, librerie copiate in locale (Blockly, qrcode) |
-| `schema.sql` | schema del database (DB nuovo) |
-| `migrazione-sessioni.sql` | da eseguire una volta sui DB già in uso, per passare alle sessioni multiple |
+| `inc/` | configurazione, DB, logica (sessioni, giochi, attestato, Duck Coding), librerie FPDF; protetta da `.htaccess` |
+| `assets/` | `css/` (tema comune, pagine, giochi), `js/` (comune, pagine, un cartella per gioco), `vendor/` con le librerie copiate in locale (Blockly, qrcode) |
+| `db/schema.sql` | schema del database |
 | `dev/xampp.sh` | avvio dell'ambiente locale con XAMPP |
 
 Nessuna dipendenza da CDN: l'evento può girare in LAN senza internet.
@@ -36,7 +37,7 @@ Nessuna dipendenza da CDN: l'evento può girare in LAN senza internet.
 
 1. Avvia XAMPP con `dev/xampp.sh`.
 2. Crea `inc/config.local.php` (ignorato da git) con le costanti di `inc/config.php`: utente `root` senza password, socket `/opt/lampp/var/mysql`.
-3. Importa `schema.sql`.
+3. Importa `db/schema.sql`.
 
 ## Deploy su Altervista
 
@@ -45,11 +46,10 @@ Nessuna dipendenza da CDN: l'evento può girare in LAN senza internet.
    php -r 'echo password_hash("la-tua-password", PASSWORD_DEFAULT), PHP_EOL;'
    ```
 2. **Non** caricare `config.local.php`.
-3. Importa `schema.sql`. Su DB già esistenti le modifiche vanno applicate a mano (`ALTER`/`INSERT`): `CREATE TABLE IF NOT EXISTS` non aggiorna le tabelle. Le tabelle `registro` e `blacklist` sono permanenti e non vanno mai cancellate.
+3. Importa `db/schema.sql`. Le tabelle `registro` e `blacklist` sono permanenti e non vanno mai cancellate.
 4. Al primo accesso ad `admin/` crea una sessione (pagina Sessioni): nome, giornata, ora di fine, password ospiti. Finché non ne esiste una il login ospite resta chiuso. Si possono tenere **più sessioni aperte insieme** (es. una *demo* per gli studenti tutor e quelle vere): la password scritta al login decide in quale si entra; classifica, partecipanti e statistiche sono separati per sessione. Una sessione *demo* non scrive nel registro e non consuma numeri d'attestato. Per la LIM: `classifica.php?s=<numero sessione>`.
-   Su un DB già in uso esegui prima `migrazione-sessioni.sql` (una volta sola): la sessione di prima diventa la n. 1.
 
 ## Note
 
 - La password dell'account ospite è in `inc/config.php`: tieni il repository privato.
-- In `inc/codegame.php` verifica che `CODEGAME_SBLOCCA_TUTTO` sia `false`.
+- "Sblocca tutti i livelli" è un'opzione per sessione (admin → Sessione): lasciala spenta per le sessioni vere.

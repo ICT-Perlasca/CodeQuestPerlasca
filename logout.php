@@ -2,7 +2,7 @@
 /** Esci dalla sessione ospite (POST): torna al login. Il profilo resta nella sessione di gioco, si rientra con utente e password. */
 declare(strict_types=1);
 
-require_once __DIR__ . '/inc/db.php';
+require_once __DIR__ . '/inc/bootstrap.php';
 
 avvia_sessione();
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {

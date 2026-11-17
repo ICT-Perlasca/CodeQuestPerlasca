@@ -36,7 +36,7 @@ CREATE TABLE impostazioni (
 -- separati per sessione. Si creano da admin/sessione.php.
 --   nome       : etichetta per lo staff ("Demo studenti", "Open Day mattina")
 --   utente     : nome utente del login ospite (con la password sceglie la sessione)
---   tipo       : 'openday' | 'laboratori' (TIPI_GIORNATA in inc/db.php)
+--   tipo       : 'openday' | 'laboratori' (TIPI_GIORNATA in inc/giornate.php)
 --   scade_il   : oltre questa data/ora il login e il salvataggio punti sono rifiutati
 --   attiva     : 0 = chiusa a mano
 --   sblocca_tutto : 1 = tutti i livelli aperti subito, senza risolvere i precedenti (utile per demo e prove)
@@ -87,7 +87,7 @@ INSERT INTO moduli (codice, titolo, max_punti, percorso_ordine) VALUES
   ('costruisci_rete',   'Costruisci la Rete',     500, NULL),
   ('password_meter',    'Password Strength Meter',300, NULL),
   ('human_vs_ai',       'Human vs AI Quiz',       500, NULL),
-  ('paperelle_coding',  'Duck Coding',           4200, 1),      -- tappa 1 del percorso, 28 livelli x 150 (inc/codegame.php)
+  ('paperelle_coding',  'Duck Coding',           4200, 1),      -- tappa 1 del percorso, 28 livelli x 150 (inc/duck/livelli.php)
   ('modifica_gioco',    'Modifica il gioco',     1000, 3),      -- 10 missioni x 100 (assets/js/palla-fisica.js); all'Open Day 4
   ('hack_website',      'Hack the Web(site)',    1500, 5);      -- 15 livelli x 100 (assets/js/hack-livelli.js); all'Open Day 4
 

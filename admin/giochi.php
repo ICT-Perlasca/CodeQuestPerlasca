@@ -8,7 +8,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/_base.php';
 
 $pdo = db();
-    // solo i giochi che esistono (GIOCHI in inc/db.php): le attivita' mai fatte o tolte non si vedono
+    // solo i giochi che esistono (GIOCHI in inc/giochi.php): le attivita' mai fatte o tolte non si vedono
     $codiciGiochi = array_keys(GIOCHI);
     $segnaposto = implode(', ', array_fill(0, count($codiciGiochi), '?'));
     $st = $pdo->prepare(
@@ -163,7 +163,7 @@ admin_inizio('giochi.php', $scelto === '' ? 'Giochi' : ($moduli[$scelto]['titolo
 <section class="card" id="gioco-paperelle_coding">
     <h2>Tempi per livello</h2>
     <?php if ($codegame === null): ?>
-      <p class="muted">Tabella <code>codegame_tempi</code> mancante: creala con lo SQL in <code>schema.sql</code>.</p>
+      <p class="muted">Tabella <code>codegame_tempi</code> mancante: creala con lo SQL in <code>db/schema.sql</code>.</p>
     <?php else: ?>
       <?php $sec = static fn($ms): string => $ms === null ? '–' : number_format($ms / 1000, 1, ',', '') . ' s'; ?>
       <div style="overflow-x:auto">

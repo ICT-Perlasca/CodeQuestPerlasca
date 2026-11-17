@@ -13,7 +13,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/../inc/api.php';
-require_once __DIR__ . '/../inc/diploma.php';
+require_once __DIR__ . '/../inc/attestato.php';
 
 richiedi_metodo('POST');
 

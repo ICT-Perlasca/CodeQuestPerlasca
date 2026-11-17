@@ -2,7 +2,7 @@
 # Avvio/arresto dell'ambiente locale XAMPP per l'Open Day.
 #   sudo bash dev/xampp.sh start   -> ferma Apache/MariaDB di sistema, avvia XAMPP,
 #                                     collega il progetto in htdocs/openday e importa lo schema
-#   sudo bash dev/xampp.sh reset   -> reimporta schema.sql (cancella i dati, tranne la tabella registro)
+#   sudo bash dev/xampp.sh reset   -> reimporta db/schema.sql (cancella i dati, tranne la tabella registro)
 #   sudo bash dev/xampp.sh stop    -> ferma XAMPP e riavvia i servizi di sistema
 set -euo pipefail
 
@@ -18,7 +18,7 @@ SERVIZI=(httpd mariadb)
 
 importa_schema() {
     "${MYSQL[@]}" -e "CREATE DATABASE IF NOT EXISTS $DB CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
-    "${MYSQL[@]}" "$DB" < "$PROGETTO/schema.sql"
+    "${MYSQL[@]}" "$DB" < "$PROGETTO/db/schema.sql"
     echo "Schema importato in $DB"
 }
 
@@ -51,7 +51,7 @@ start)
     [[ -n ${IP:-} ]] && echo "Da smartphone (stessa Wi-Fi):  http://$IP/openday/login.php?user=openday"
     ;;
 reset)
-    # niente DROP DATABASE: schema.sql ricrea tutte le tabelle tranne `registro`, che e' permanente
+    # niente DROP DATABASE: db/schema.sql ricrea tutte le tabelle tranne `registro`, che e' permanente
     importa_schema
     ;;
 stop)
