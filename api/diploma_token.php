@@ -19,7 +19,7 @@ richiedi_metodo('POST');
 
 // niente richiedi_ospite(): il diploma resta scaricabile anche a evento chiuso
 avvia_sessione();
-if (empty($_SESSION['ospite'])) {
+if (!ospite_collegato()) {
     json_errore(401, 'Sessione scaduta: rifai il login');
 }
 if (empty($_SESSION['uuid'])) {
@@ -37,8 +37,8 @@ try {
 }
 
 $pdo = db();
-$st = $pdo->prepare('SELECT id FROM partecipanti WHERE uuid = ? AND nascosto = 0');
-$st->execute([$_SESSION['uuid']]);
+$st = $pdo->prepare('SELECT id FROM partecipanti WHERE sessione_id = ? AND uuid = ? AND nascosto = 0');
+$st->execute([sessione_id_corrente(), $_SESSION['uuid']]);
 $id = $st->fetchColumn();
 if ($id === false) {
     json_errore(403, 'Diploma non disponibile: chiedi a un membro dello staff');

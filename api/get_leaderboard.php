@@ -1,6 +1,6 @@
 <?php
 /**
- * GET api/get_leaderboard.php  (pubblico, sola lettura)
+ * GET api/get_leaderboard.php[?s=<id sessione>]  (pubblico, sola lettura)
  * Risposta: { ok, top: [{id, nickname, avatar, punti}], ultimi: [...], partecipanti }
  *
  * Interrogato ogni pochi secondi da classifica.php: risponde con ETag, quindi
@@ -13,25 +13,32 @@ require_once __DIR__ . '/../inc/api.php';
 richiedi_metodo('GET');
 
 $pdo = db();
+$sid = sessione_pubblica() ?? 0; // ?s=<id sessione>; senza, quella dell'ospite o la piu' recente
 
 // a parita' di punti vince chi li ha raggiunti prima
-$top = $pdo->query(
+$top = $pdo->prepare(
     'SELECT id, nickname, avatar, punti_totali AS punti
        FROM partecipanti
-      WHERE nascosto = 0 AND punti_totali > 0
+      WHERE sessione_id = ? AND nascosto = 0 AND punti_totali > 0
       ORDER BY punti_totali DESC, updated_at ASC, id ASC
       LIMIT 10'
-)->fetchAll();
+);
+$top->execute([$sid]);
+$top = $top->fetchAll();
 
-$ultimi = $pdo->query(
+$ultimi = $pdo->prepare(
     'SELECT id, nickname, avatar, punti_totali AS punti
        FROM partecipanti
-      WHERE nascosto = 0
+      WHERE sessione_id = ? AND nascosto = 0
       ORDER BY created_at DESC, id DESC
       LIMIT 6'
-)->fetchAll();
+);
+$ultimi->execute([$sid]);
+$ultimi = $ultimi->fetchAll();
 
-$totale = (int) $pdo->query('SELECT COUNT(*) FROM partecipanti WHERE nascosto = 0')->fetchColumn();
+$totale = $pdo->prepare('SELECT COUNT(*) FROM partecipanti WHERE sessione_id = ? AND nascosto = 0');
+$totale->execute([$sid]);
+$totale = (int) $totale->fetchColumn();
 
 $corpo = json_encode(
     ['ok' => true, 'top' => $top, 'ultimi' => $ultimi, 'partecipanti' => $totale],

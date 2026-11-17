@@ -9,12 +9,12 @@ $pdo = db();
     $ord = ($_GET['ord'] ?? '') === 'punti' ? 'punti' : 'recenti';
     $sql = 'SELECT p.id, p.nickname, p.avatar, p.punti_totali, p.nascosto, p.created_at, r.nome
               FROM partecipanti p LEFT JOIN registro r ON r.uuid = p.uuid'
-         . ($q !== '' ? ' WHERE p.nickname LIKE ? OR r.nome LIKE ?' : '')
+         . ' WHERE p.sessione_id = ?' . ($q !== '' ? ' AND (p.nickname LIKE ? OR r.nome LIKE ?)' : '')
          . ($ord === 'punti' ? ' ORDER BY p.punti_totali DESC, p.updated_at ASC' : ' ORDER BY p.created_at DESC, p.id DESC')
          . ' LIMIT 200';
     $st = $pdo->prepare($sql);
     $cerca = '%' . addcslashes($q, '%_\\') . '%';
-    $st->execute($q !== '' ? [$cerca, $cerca] : []);
+    $st->execute($q !== '' ? [$sidAdmin, $cerca, $cerca] : [$sidAdmin]);
     $partecipanti = $st->fetchAll();
 $blacklist = $pdo->query('SELECT id, parola FROM blacklist ORDER BY parola')->fetchAll();
 

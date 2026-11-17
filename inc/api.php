@@ -69,11 +69,11 @@ function leggi_json(): array
 function richiedi_ospite(): void
 {
     avvia_sessione();
-    if (empty($_SESSION['ospite'])) {
+    if (!ospite_collegato()) {
         json_errore(401, 'Sessione scaduta: rifai il login');
     }
     if (!evento_aperto()) {
-        json_errore(403, "L'Open Day e' terminato: grazie per aver giocato!");
+        json_errore(403, 'La sessione e\' terminata: grazie per aver giocato!');
     }
 }
 
@@ -94,6 +94,8 @@ function aggiorna_totale(PDO $pdo, int $partecipanteId, string $uuid): int
     $st->execute([$partecipanteId]);
     $totale = (int) $st->fetchColumn();
 
-    $pdo->prepare('UPDATE registro SET punti = ? WHERE uuid = ?')->execute([$totale, $uuid]);
+    if (!sessione_demo()) {
+        $pdo->prepare('UPDATE registro SET punti = ? WHERE uuid = ?')->execute([$totale, $uuid]);
+    }
     return $totale;
 }

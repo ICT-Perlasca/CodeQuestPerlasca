@@ -1,6 +1,6 @@
 <?php
 /**
- * Login ospite condiviso. Link da QR code: login.php?user=openday
+ * Login ospite: utente e password (per sessione, scelti in admin) decidono in quale sessione si entra.
  */
 declare(strict_types=1);
 
@@ -17,19 +17,37 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
 
     if ($tentativi >= 10) {
         $errore = 'Troppi tentativi: chiedi la password allo staff.';
-    } elseif (!evento_aperto()) {
-        $errore = sessione_stato() === 'nuova'
-            ? "L'evento non e' ancora iniziato: chiedi allo staff."
-            : sessione_attivita()['etichetta'] . " e' terminato. Ti aspettiamo all'IIS Perlasca!";
-    } elseif (hash_equals(OSPITE_USER, $utente) && hash_equals(ospite_pass(), strtolower(trim($password)))) {
-        session_regenerate_id(true);
-        $_SESSION['ospite'] = true;
-        $_SESSION['tentativi_login'] = 0;
-        header('Location: index.php');
-        exit;
     } else {
+        // utente e password decidono la sessione: tra quelle con questa password si entra nella prima in corso
+        $pass = strtolower(trim($password));
+        $st = db()->prepare('SELECT * FROM sessioni WHERE utente = ? AND password = ? ORDER BY id DESC');
+        $st->execute([strtolower(trim($utente)), $pass]);
+        $candidate = $pass !== '' && trim($utente) !== '' ? $st->fetchAll() : [];
+        $scelta = null;
+        foreach ($candidate as $r) {
+            if (stato_sessione($r) === 'attiva') {
+                $scelta = $r;
+                break;
+            }
+        }
+
+        if ($scelta !== null) {
+            session_regenerate_id(true);
+            $_SESSION['ospite'] = true;
+            $_SESSION['sessione_id'] = (int) $scelta['id'];
+            unset($_SESSION['uuid']); // il profilo appartiene alla sessione precedente: si sceglie il nickname di nuovo
+            $_SESSION['tentativi_login'] = 0;
+            header('Location: index.php');
+            exit;
+        }
+
         $_SESSION['tentativi_login'] = $tentativi + 1;
-        $errore = 'Password errata. Suggerimento: e\' scritta sul cartellone all\'ingresso!';
+        if ($candidate) {
+            $tipo = TIPI_GIORNATA[$candidate[0]['tipo']]['etichetta'] ?? 'La sessione';
+            $errore = "$tipo e' terminato. Ti aspettiamo all'IIS Perlasca!";
+        } else {
+            $errore = 'Utente o password errati. Suggerimento: e\' scritta sul cartellone all\'ingresso!';
+        }
     }
 }
 ?>
@@ -56,13 +74,13 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
 </head>
 <body>
 <form method="post" autocomplete="off">
-  <h1><?= htmlspecialchars(sessione_attivita()['etichetta'], ENT_QUOTES) ?> · Informatica</h1>
+  <h1>CodeQuestPerlasca · Informatica</h1>
   <p>IIS "Giacomo Perlasca" — entra e gioca!</p>
   <?php if ($errore !== ''): ?><p class="errore" role="alert"><?= htmlspecialchars($errore, ENT_QUOTES) ?></p><?php endif; ?>
   <label>Utente
     <input name="user" value="<?= htmlspecialchars($utente, ENT_QUOTES) ?>" autocapitalize="none" required>
   </label>
-  <label>Password dell'evento
+  <label>Password della sessione
     <input name="password" type="password" autocapitalize="none" autofocus required>
   </label>
   <button type="submit">Entra</button>

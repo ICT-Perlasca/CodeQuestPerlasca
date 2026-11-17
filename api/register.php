@@ -3,7 +3,7 @@
  * POST api/register.php
  * Body JSON: { "uuid": "<uuidv4>", "nickname": "Neo_42", "avatar": "robot-3" }
  *
- * Crea il partecipante (o aggiorna nickname/avatar se il UUID esiste gia',
+ * Crea il partecipante nella sessione dell'ospite (o aggiorna nickname/avatar se il UUID esiste gia',
  * ad es. sessione PHP scaduta ma localStorage ancora presente) e lega il
  * UUID alla sessione: da qui in poi save_score.php accetta solo questo UUID.
  */
@@ -37,15 +37,16 @@ $pdo = db();
 // Niente ON DUPLICATE KEY UPDATE: scatterebbe anche su uq_nickname e
 // sovrascriverebbe il profilo di chi ha gia' quel nickname.
 // Qui un nickname occupato da un altro UUID fa sempre fallire la query.
-$esiste = $pdo->prepare('SELECT 1 FROM partecipanti WHERE uuid = ?');
-$esiste->execute([$uuid]);
+$sid = (int) sessione_id_corrente();
+$esiste = $pdo->prepare('SELECT 1 FROM partecipanti WHERE sessione_id = ? AND uuid = ?');
+$esiste->execute([$sid, $uuid]);
 try {
     if ($esiste->fetchColumn()) {
-        $pdo->prepare('UPDATE partecipanti SET nickname = :nick, avatar = :avatar WHERE uuid = :uuid')
-            ->execute(['uuid' => $uuid, 'nick' => $nickname, 'avatar' => $avatar]);
+        $pdo->prepare('UPDATE partecipanti SET nickname = :nick, avatar = :avatar WHERE sessione_id = :sid AND uuid = :uuid')
+            ->execute(['sid' => $sid, 'uuid' => $uuid, 'nick' => $nickname, 'avatar' => $avatar]);
     } else {
-        $pdo->prepare('INSERT INTO partecipanti (uuid, nickname, avatar) VALUES (:uuid, :nick, :avatar)')
-            ->execute(['uuid' => $uuid, 'nick' => $nickname, 'avatar' => $avatar]);
+        $pdo->prepare('INSERT INTO partecipanti (sessione_id, uuid, nickname, avatar) VALUES (:sid, :uuid, :nick, :avatar)')
+            ->execute(['sid' => $sid, 'uuid' => $uuid, 'nick' => $nickname, 'avatar' => $avatar]);
     }
 } catch (PDOException $e) {
     if ($e->getCode() === '23000') { // violazione uq_nickname
@@ -54,17 +55,20 @@ try {
     throw $e;
 }
 
-// registro permanente: l'ora d'arrivo resta quella della prima registrazione
-$pdo->prepare(
-    'INSERT INTO registro (uuid, nickname, arrivato_il)
-     VALUES (:uuid, :nick, :ora)
-     ON DUPLICATE KEY UPDATE nickname = :nick_upd'
-)->execute(['uuid' => $uuid, 'nick' => $nickname, 'ora' => date('Y-m-d H:i:s'), 'nick_upd' => $nickname]);
+// registro permanente: l'ora d'arrivo resta quella della prima registrazione.
+// Le sessioni demo (prove con gli studenti tutor) non ci entrano.
+if (!sessione_demo()) {
+    $pdo->prepare(
+        'INSERT INTO registro (uuid, nickname, arrivato_il)
+         VALUES (:uuid, :nick, :ora)
+         ON DUPLICATE KEY UPDATE nickname = :nick_upd'
+    )->execute(['uuid' => $uuid, 'nick' => $nickname, 'ora' => date('Y-m-d H:i:s'), 'nick_upd' => $nickname]);
+}
 
 $_SESSION['uuid'] = $uuid;
 
-$st = $pdo->prepare('SELECT uuid, nickname, avatar, punti_totali FROM partecipanti WHERE uuid = ?');
-$st->execute([$uuid]);
+$st = $pdo->prepare('SELECT uuid, nickname, avatar, punti_totali FROM partecipanti WHERE sessione_id = ? AND uuid = ?');
+$st->execute([$sid, $uuid]);
 json_out(['ok' => true, 'partecipante' => $st->fetch()]);
 
 /** Confronta il nickname normalizzato con la blacklist (per sottostringa). */

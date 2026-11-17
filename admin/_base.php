@@ -124,7 +124,7 @@ function admin_css(): void
   .scorri { overflow-x:auto; }
   .campi { display:grid; gap:12px; grid-template-columns:1fr; }
   @media (min-width:760px) { .campi { grid-template-columns:repeat(3, 1fr); } .campi .largo { grid-column:1 / -1; } }
-  .campi label { display:grid; gap:6px; color:var(--muted); font-size:.9rem; }
+  .campi label { display:grid; align-content:start; gap:6px; color:var(--muted); font-size:.9rem; }
   .campi label > .muted { font-size:.8rem; }
   select, textarea, input[type=date], input[type=time] { font:inherit; color:var(--text); padding:9px 11px; border-radius:9px;
     border:1px solid var(--line); background:#0e1430; color-scheme:dark; min-width:0; }
@@ -147,6 +147,9 @@ function admin_css(): void
   nav.menu .sp { flex:1; }
   nav.menu .live { margin:8px; padding:10px; border-radius:10px; background:#0e1430; font-size:.8rem; color:var(--muted); }
   nav.menu form { margin:0; }
+  nav.menu .scelta-sessione { margin:0 8px 10px; }
+  nav.menu .scelta-sessione label { display:grid; gap:4px; font-size:.75rem; color:var(--muted); }
+  nav.menu .scelta-sessione select { width:100%; }
   nav.menu button { width:100%; text-align:left; background:transparent; border:0; color:var(--muted); padding:10px 12px; }
   main.contenuto { padding:20px; display:grid; gap:16px; align-content:start; max-width:960px; width:100%; }
   main.contenuto > h1 { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
@@ -160,6 +163,7 @@ function admin_css(): void
     .layout { grid-template-columns:1fr; }
     nav.menu { position:static; height:auto; flex-direction:row; overflow-x:auto; padding:8px; }
     nav.menu h1, nav.menu .live, nav.menu .sp { display:none; }
+    nav.menu .scelta-sessione { margin:0; align-self:center; }
     nav.menu a, nav.menu button { white-space:nowrap; }
     main.contenuto { padding:12px; }
   }
@@ -212,81 +216,116 @@ if (empty($_SESSION['admin'])) {
     exit;
 }
 
+/* ---------------------------------------------------------------- sessione selezionata */
+// L'admin lavora su UNA sessione alla volta (menu in alto a sinistra): panoramica, partecipanti e statistiche
+// dei giochi sono di quella sessione. Senza scelta: la piu' recente in corso (le vere prima delle demo).
+try {
+    $sidAdmin = $_SESSION['admin_sessione'] ?? null;
+    if (!is_int($sidAdmin) || sessione_riga($sidAdmin) === null) {
+        $sidAdmin = sessione_predefinita();
+        $_SESSION['admin_sessione'] = $sidAdmin;
+    }
+} catch (PDOException $ex) {
+    // database non migrato (manca la tabella `sessioni`): spiega cosa fare invece di un errore 500 muto
+    error_log('[openday] ' . $ex->getMessage());
+    admin_head('Database da aggiornare');
+    echo '<body style="padding:24px;max-width:640px;margin:auto"><div class="card"><h1>Database da aggiornare</h1>'
+       . '<p>Questa versione usa le sessioni multiple e il database non è ancora stato migrato.</p>'
+       . '<p>Apri phpMyAdmin, seleziona il database del progetto ed esegui <code>migrazione-sessioni.sql</code> (una volta sola), poi ricarica.</p>'
+       . (DEBUG ? '<p class="muted">' . htmlspecialchars($ex->getMessage(), ENT_QUOTES) . '</p>' : '') . '</div></body></html>';
+    exit;
+}
+imposta_sessione($sidAdmin);
+
 /**
- * Crea (o ricrea) la sessione di gioco in un colpo solo: giornata, ora di fine, password ospiti,
- * scadenza del download e validita' del QR. Apre il login. Facoltativo: azzera la classifica
- * (il registro permanente non si tocca mai).
+ * Crea una sessione di gioco o ne modifica una ($id): giornata, ora di fine, password ospiti,
+ * scadenza del download e validita' del QR. Una nuova sessione apre subito il login.
+ * Piu' sessioni possono essere attive insieme (es. una demo e quelle vere): la password
+ * scritta al login decide in quale si entra, quindi deve essere diversa da quella delle altre in corso.
  *
- * @return array{0: bool, 1: string} [riuscita, messaggio]
+ * @return array{0: bool, 1: string, 2: ?int} [riuscita, messaggio, id della sessione]
  */
-function nuova_sessione(PDO $pdo, array $in): array
+function salva_sessione(PDO $pdo, array $in, ?int $id = null): array
 {
     $pulisci = static fn(string $k): string => trim((string) preg_replace('/\s+/u', ' ', (string) ($in[$k] ?? '')));
     $stampabile = static fn(string $t): bool => mb_convert_encoding(mb_convert_encoding($t, 'Windows-1252', 'UTF-8'), 'UTF-8', 'Windows-1252') === $t;
 
+    $nome = $pulisci('nome');
     $tipo = (string) ($in['tipo'] ?? '');
     $data = DateTime::createFromFormat('!Y-m-d', (string) ($in['data'] ?? ''));
     $fine = $data ? DateTime::createFromFormat('Y-m-d H:i', $data->format('Y-m-d') . ' ' . (string) ($in['fine'] ?? '')) : false;
     $titolo = $pulisci('titolo');
     $descrizione = $pulisci('descrizione');
+    $utente = strtolower(trim((string) ($in['utente'] ?? '')));
     $pass = strtolower(trim((string) ($in['ospite_pass'] ?? '')));
     $qr = (string) ($in['qr_minuti'] ?? '');
     $grezzo = trim((string) ($in['diploma_scadenza'] ?? ''));
     $diploma = $grezzo === '' ? null : DateTime::createFromFormat('Y-m-d\TH:i', $grezzo);
+    $demo = !empty($in['demo']) ? 1 : 0;
+    $attiva = $id === null || !empty($in['attiva']) ? 1 : 0;
 
+    if ($nome === '' || mb_strlen($nome) > 60) {
+        return [false, 'Dai un nome alla sessione (max 60 caratteri), per riconoscerla: es. «Demo studenti».', null];
+    }
     if (!isset(TIPI_GIORNATA[$tipo])) {
-        return [false, 'Tipo di giornata non valido.'];
+        return [false, 'Tipo di giornata non valido.', null];
     }
     if ($data === false || $fine === false) {
-        return [false, "Giorno e ora di fine dell'attività sono obbligatori."];
+        return [false, "Giorno e ora di fine dell'attività sono obbligatori.", null];
     }
-    if ($fine->getTimestamp() <= time()) {
-        return [false, "L'ora di fine è già passata: la sessione risulterebbe subito scaduta."];
+    if ($id === null && $fine->getTimestamp() <= time()) {
+        return [false, "L'ora di fine è già passata: la sessione risulterebbe subito scaduta.", null];
     }
     if (mb_strlen($titolo) > 60 || mb_strlen($descrizione) > 200) {
-        return [false, 'Titolo max 60 caratteri, descrizione max 200.'];
+        return [false, 'Titolo max 60 caratteri, descrizione max 200.', null];
     }
     if (!$stampabile($titolo) || !$stampabile($descrizione)) {
-        return [false, 'Titolo o descrizione contengono caratteri che il PDF non sa stampare (emoji, simboli): toglili.'];
+        return [false, 'Titolo o descrizione contengono caratteri che il PDF non sa stampare (emoji, simboli): toglili.', null];
+    }
+    if (preg_match('/^[a-z0-9]{3,30}$/', $utente) !== 1) {
+        return [false, 'Nome utente obbligatorio: 3-30 caratteri, solo lettere (senza accenti) e numeri.', null];
     }
     if (preg_match('/^[a-z0-9]{4,30}$/', $pass) !== 1) {
-        return [false, 'Password ospiti obbligatoria: 4-30 caratteri, solo lettere (senza accenti) e numeri.'];
-    }
-    if (hash_equals(OSPITE_PASS, $pass) || (sessione_stato() === 'scaduta' && hash_equals(ospite_pass(), $pass))) {
-        return [false, 'Scegli una password nuova: diversa da quella della sessione precedente e da quella predefinita di config.php.'];
+        return [false, 'Password ospiti obbligatoria: 4-30 caratteri, solo lettere (senza accenti) e numeri.', null];
     }
     if (!ctype_digit($qr) || (int) $qr < 1 || (int) $qr > DIPLOMA_TOKEN_MINUTI_MAX) {
-        return [false, 'Validità del QR code: da 1 a ' . DIPLOMA_TOKEN_MINUTI_MAX . ' minuti.'];
+        return [false, 'Validità del QR code: da 1 a ' . DIPLOMA_TOKEN_MINUTI_MAX . ' minuti.', null];
     }
     if ($diploma === false || ($diploma !== null && $diploma <= $fine)) {
-        return [false, "La scadenza del download dev'essere una data valida dopo la fine della sessione (o vuota = automatica)."];
+        return [false, "La scadenza del download dev'essere una data valida dopo la fine della sessione (o vuota = automatica).", null];
     }
 
-    $azzerati = 0;
-    $pdo->beginTransaction();
-    $st = $pdo->prepare('INSERT INTO impostazioni (chiave, valore) VALUES (?, ?) ON DUPLICATE KEY UPDATE valore = VALUES(valore)');
-    foreach ([
-        'sessione_tipo' => $tipo,
-        'sessione_data' => $data->format('Y-m-d'),
-        'sessione_titolo' => $titolo,
-        'sessione_descrizione' => $descrizione,
-        'scadenza' => $fine->format('Y-m-d H:i:00'),
-        'evento_attivo' => '1',
-        'ospite_pass' => $pass,
-        'diploma_scadenza' => $diploma ? $diploma->format('Y-m-d H:i:00') : '',
-        'diploma_qr_minuti' => (string) (int) $qr,
-        'sessione_creata' => date('Y-m-d H:i:s'),
-    ] as $chiave => $valore) {
-        $st->execute([$chiave, $valore]);
+    // la password sceglie la sessione: due sessioni in corso non possono averla uguale
+    $st = $pdo->prepare('SELECT nome FROM sessioni WHERE utente = ? AND password = ? AND id <> ? AND attiva = 1 AND scade_il > ?');
+    $st->execute([$utente, $pass, $id ?? 0, date('Y-m-d H:i:s')]);
+    $occupata = $st->fetchColumn();
+    if ($occupata !== false && $attiva === 1 && $fine->getTimestamp() > time()) {
+        return [false, "La coppia utente «{$utente}» + password «{$pass}» è già usata dalla sessione «{$occupata}», che è in corso: cambia l'utente o la password.", null];
     }
-    if (!empty($in['azzera'])) {
-        $azzerati = (int) $pdo->exec('DELETE FROM partecipanti');
-    }
-    $pdo->commit();
 
-    return [true, 'Sessione creata: ' . TIPI_GIORNATA[$tipo]['etichetta'] . ' del ' . $data->format('d/m/Y')
-        . ', login aperto fino alle ' . $fine->format('H:i') . ", password «{$pass}»."
-        . ($azzerati > 0 ? " Classifica azzerata ({$azzerati} partecipanti)." : '')];
+    $campi = [
+        'nome' => $nome, 'tipo' => $tipo, 'data' => $data->format('Y-m-d'), 'titolo' => $titolo, 'descrizione' => $descrizione,
+        'utente' => $utente, 'password' => $pass, 'scade_il' => $fine->format('Y-m-d H:i:00'), 'attiva' => $attiva, 'demo' => $demo,
+        'diploma_scade_il' => $diploma ? $diploma->format('Y-m-d H:i:00') : null, 'qr_minuti' => (int) $qr,
+    ];
+    if ($id === null) {
+        $pdo->prepare(
+            'INSERT INTO sessioni (nome, tipo, data, titolo, descrizione, utente, password, scade_il, attiva, demo, diploma_scade_il, qr_minuti)
+             VALUES (:nome, :tipo, :data, :titolo, :descrizione, :utente, :password, :scade_il, :attiva, :demo, :diploma_scade_il, :qr_minuti)'
+        )->execute($campi);
+        $id = (int) $pdo->lastInsertId();
+        $msg = "Sessione «{$nome}» creata";
+    } else {
+        $pdo->prepare(
+            'UPDATE sessioni SET nome = :nome, tipo = :tipo, data = :data, titolo = :titolo, descrizione = :descrizione,
+                    utente = :utente, password = :password, scade_il = :scade_il, attiva = :attiva, demo = :demo,
+                    diploma_scade_il = :diploma_scade_il, qr_minuti = :qr_minuti
+              WHERE id = :id'
+        )->execute($campi + ['id' => $id]);
+        $msg = "Sessione «{$nome}» salvata";
+    }
+    return [true, $msg . ': ' . TIPI_GIORNATA[$tipo]['etichetta'] . ($demo ? ' (demo)' : '') . ' del ' . $data->format('d/m/Y')
+        . ', login aperto fino alle ' . $fine->format('H:i') . ", utente «{$utente}», password «{$pass}».", $id];
 }
 
 /* ---------------------------------------------------------------- azioni */
@@ -333,95 +372,47 @@ if ($metodo === 'POST') {
             flash($msg);
             break;
 
-        case 'evento':
-            $scadenza = DateTime::createFromFormat('Y-m-d\TH:i', (string) ($_POST['scadenza'] ?? ''));
-            if ($scadenza === false) {
-                flash('Data di scadenza non valida.', 'ko');
-                break;
+        case 'admin_sessione': // sceglie la sessione su cui lavora il pannello
+            $scelta = filter_var($_POST['sessione'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+            if ($scelta !== false && sessione_riga($scelta) !== null) {
+                $_SESSION['admin_sessione'] = $scelta;
             }
-            $st = $pdo->prepare('INSERT INTO impostazioni (chiave, valore) VALUES (?, ?) ON DUPLICATE KEY UPDATE valore = VALUES(valore)');
-            $st->execute(['evento_attivo', isset($_POST['attivo']) ? '1' : '0']);
-            $st->execute(['scadenza', $scadenza->format('Y-m-d H:i:00')]);
-            flash('Impostazioni evento salvate.');
             break;
 
         case 'sessione_nuova':
-            $nuova = nuova_sessione($pdo, $_POST);
+            $nuova = salva_sessione($pdo, $_POST);
+            if ($nuova[0]) {
+                $_SESSION['admin_sessione'] = $nuova[2]; // si passa subito a lavorare sulla sessione creata
+            }
             flash($nuova[1], $nuova[0] ? 'ok' : 'ko');
             break;
 
-        case 'sessione_termina':
-            $pdo->prepare("INSERT INTO impostazioni (chiave, valore) VALUES ('scadenza', ?) ON DUPLICATE KEY UPDATE valore = VALUES(valore)")
-                ->execute([date('Y-m-d H:i:s')]);
-            flash('Sessione terminata: il login è chiuso. Crea la prossima quando serve.');
-            break;
-
-        case 'password_ospite':
-            // il login confronta in minuscolo e senza spazi ai lati: salviamo gia' cosi'
-            $pass = strtolower(trim((string) ($_POST['ospite_pass'] ?? '')));
-            if ($pass === '') {
-                $pdo->prepare("DELETE FROM impostazioni WHERE chiave = 'ospite_pass'")->execute();
-                flash('Password ospiti ripristinata a quella di config.php.');
-            } elseif (preg_match('/^[a-z0-9]{4,30}$/', $pass) !== 1) {
-                flash('Password: 4-30 caratteri, solo lettere (senza accenti) e numeri.', 'ko');
-            } else {
-                $pdo->prepare('INSERT INTO impostazioni (chiave, valore) VALUES (?, ?) ON DUPLICATE KEY UPDATE valore = VALUES(valore)')
-                    ->execute(['ospite_pass', $pass]);
-                flash("Password ospiti cambiata in «{$pass}». Chi è già dentro resta collegato.");
-            }
-            break;
-
-        case 'diploma':
-            $minuti = (string) ($_POST['qr_minuti'] ?? '');
-            if (!ctype_digit($minuti) || (int) $minuti < 1 || (int) $minuti > DIPLOMA_TOKEN_MINUTI_MAX) {
-                flash('Validità del QR code: da 1 a ' . DIPLOMA_TOKEN_MINUTI_MAX . ' minuti.', 'ko');
-                break;
-            }
-            $grezzo = trim((string) ($_POST['diploma_scadenza'] ?? ''));
-            $fine = $grezzo === '' ? null : DateTime::createFromFormat('Y-m-d\TH:i', $grezzo);
-            if ($fine === false) {
-                flash('Data non valida.', 'ko');
-                break;
-            }
-            $st = $pdo->prepare('INSERT INTO impostazioni (chiave, valore) VALUES (?, ?) ON DUPLICATE KEY UPDATE valore = VALUES(valore)');
-            $st->execute(['diploma_scadenza', $fine ? $fine->format('Y-m-d H:i:00') : '']);
-            $st->execute(['diploma_qr_minuti', (string) (int) $minuti]);
-            flash(($fine ? 'Attestati scaricabili fino al ' . $fine->format('d/m/Y H:i') : 'Download attestati con scadenza automatica')
-                . '; QR code valido ' . (int) $minuti . ' minuti.');
-            break;
-
         case 'sessione':
-            $tipo = (string) ($_POST['tipo'] ?? '');
-            $data = DateTime::createFromFormat('!Y-m-d', (string) ($_POST['data'] ?? ''));
-            // testo su una riga, spazi compattati; i font del PDF conoscono solo Windows-1252 (niente emoji)
-            $pulisci = static fn(string $k): string => trim((string) preg_replace('/\s+/u', ' ', (string) ($_POST[$k] ?? '')));
-            $titolo = $pulisci('titolo');
-            $descrizione = $pulisci('descrizione');
-            $stampabile = static fn(string $t): bool => mb_convert_encoding(mb_convert_encoding($t, 'Windows-1252', 'UTF-8'), 'UTF-8', 'Windows-1252') === $t;
-
-            if (!isset(TIPI_GIORNATA[$tipo])) {
-                flash('Tipo di giornata non valido.', 'ko');
-            } elseif ($data === false) {
-                flash("Data dell'attività non valida.", 'ko');
-            } elseif (mb_strlen($titolo) > 60 || mb_strlen($descrizione) > 200) {
-                flash('Titolo max 60 caratteri, descrizione max 200.', 'ko');
-            } elseif (!$stampabile($titolo) || !$stampabile($descrizione)) {
-                flash("Titolo o descrizione contengono caratteri che il PDF non sa stampare (emoji, simboli): toglili.", 'ko');
-            } else {
-                $st = $pdo->prepare('INSERT INTO impostazioni (chiave, valore) VALUES (?, ?) ON DUPLICATE KEY UPDATE valore = VALUES(valore)');
-                $st->execute(['sessione_tipo', $tipo]);
-                $st->execute(['sessione_data', $data->format('Y-m-d')]);
-                $st->execute(['sessione_titolo', $titolo]);
-                $st->execute(['sessione_descrizione', $descrizione]);
-                $msg = 'Sessione salvata: ' . TIPI_GIORNATA[$tipo]['etichetta'] . ' del ' . $data->format('d/m/Y') . '.';
-                // facoltativo: chiude il login all'ora di fine dello stesso giorno
-                $fine = DateTime::createFromFormat('Y-m-d H:i', $data->format('Y-m-d') . ' ' . (string) ($_POST['fine'] ?? ''));
-                if ($fine !== false) {
-                    $st->execute(['scadenza', $fine->format('Y-m-d H:i:00')]);
-                    $msg .= ' Login aperto fino alle ' . $fine->format('H:i') . '.';
-                }
-                flash($msg);
+            if ($sidAdmin === null) {
+                flash('Nessuna sessione da salvare.', 'ko');
+                break;
             }
+            $salvata = salva_sessione($pdo, $_POST, $sidAdmin);
+            flash($salvata[1], $salvata[0] ? 'ok' : 'ko');
+            break;
+
+        case 'sessione_termina':
+            if ($sidAdmin !== null) {
+                $pdo->prepare('UPDATE sessioni SET scade_il = ? WHERE id = ?')->execute([date('Y-m-d H:i:s'), $sidAdmin]);
+                flash('Sessione terminata: il login è chiuso. Per riaprirla cambia l\'ora di fine, o creane una nuova.');
+            }
+            break;
+
+        case 'sessione_elimina':
+            $riga = $sidAdmin !== null ? sessione_riga($sidAdmin) : null;
+            if ($riga === null || ($_POST['conferma'] ?? '') !== 'ELIMINA') {
+                flash('Scrivi ELIMINA per confermare.', 'ko');
+                break;
+            }
+            $n = (int) $pdo->query('SELECT COUNT(*) FROM partecipanti WHERE sessione_id = ' . (int) $sidAdmin)->fetchColumn();
+            $pdo->prepare('DELETE FROM sessioni WHERE id = ?')->execute([$sidAdmin]); // i partecipanti seguono (ON DELETE CASCADE)
+            unset($_SESSION['admin_sessione']);
+            flash("Sessione «{$riga['nome']}» eliminata con i suoi {$n} partecipanti. Il registro non è stato toccato.");
             break;
 
         case 'giochi':
@@ -462,8 +453,9 @@ if ($metodo === 'POST') {
                 flash('Scrivi RESET per confermare.', 'ko');
                 break;
             }
-            $n = $pdo->exec('DELETE FROM partecipanti');
-            flash("Classifica azzerata: {$n} partecipanti eliminati.");
+            $st = $pdo->prepare('DELETE FROM partecipanti WHERE sessione_id = ?');
+            $st->execute([$sidAdmin]);
+            flash('Classifica azzerata: ' . $st->rowCount() . ' partecipanti eliminati dalla sessione.');
             break;
 
         default:
@@ -478,26 +470,44 @@ $csrf = $_SESSION['csrf'] ?? '';
 function admin_inizio(string $file, string $titolo): void
 {
     global $e, $csrf;
-    // sessione mai creata o scaduta: l'admin deve (ri)crearla prima di usare il resto del pannello.
-    // Restano liberi registro (export dei dati a fine giornata) e sistema (reset).
-    if ($file !== 'sessione.php' && !in_array($file, ['registro.php', 'sistema.php'], true) && sessione_stato() !== 'attiva') {
-        flash(sessione_stato() === 'nuova' ? 'Prima di tutto crea la sessione di gioco.' : 'La sessione è terminata: creane una nuova.', 'ko');
+    global $sidAdmin;
+    // senza nessuna sessione il pannello serve a poco: si parte dalla creazione.
+    // Restano liberi registro (export dei dati) e sistema (reset).
+    if ($sidAdmin === null && !in_array($file, ['sessione.php', 'registro.php', 'sistema.php'], true)) {
+        flash('Prima di tutto crea una sessione di gioco.', 'ko');
         header('Location: sessione.php');
         exit;
     }
     $flash = $_SESSION['flash'] ?? null;
     unset($_SESSION['flash']);
-    $scadenza = strtotime((string) (db()->query("SELECT valore FROM impostazioni WHERE chiave = 'scadenza'")->fetchColumn() ?: ''));
+    $riga = $sidAdmin !== null ? sessione_riga($sidAdmin) : null;
     $aperto = evento_aperto();
 
     admin_head($titolo);
     echo '<body><div class="layout"><nav class="menu"><h1>🛡️ Admin<small>CodeQuestPerlasca</small></h1>';
+    $tutte = elenco_sessioni();
+    if ($tutte) {
+        echo '<form method="post" class="scelta-sessione"><input type="hidden" name="csrf" value="' . $e($csrf) . '"><input type="hidden" name="azione" value="admin_sessione">'
+           . '<label>Sessione<select name="sessione" onchange="this.form.submit()">';
+        foreach ($tutte as $r) {
+            $statoR = ['attiva' => '●', 'chiusa' => '○', 'scaduta' => '○'][stato_sessione($r)];
+            echo '<option value="' . (int) $r['id'] . '"' . ((int) $r['id'] === $sidAdmin ? ' selected' : '') . '>'
+               . $statoR . ' ' . $e($r['nome']) . ((int) $r['demo'] === 1 ? ' (demo)' : '') . '</option>';
+        }
+        echo '</select></label><noscript><button type="submit">Vai</button></noscript></form>';
+    }
     foreach (ADMIN_VOCI as $f => [$icona, $nome]) {
         echo '<a href="' . $f . '"' . ($f === $file ? ' class="on"' : '') . '><span>' . $icona . '</span> ' . $nome . '</a>';
     }
-    echo '<a href="../classifica.php" target="_blank"><span>🏆</span> Classifica live ↗</a><div class="sp"></div>';
-    echo '<div class="live"><span class="stato' . ($aperto ? '' : ' chiuso') . '">' . ($aperto ? 'Evento aperto' : 'Evento chiuso') . '</span>'
-       . ($scadenza ? '<br>fino al ' . date('d/m H:i', $scadenza) : '') . '</div>';
+    echo '<a href="../classifica.php' . ($sidAdmin !== null ? '?s=' . $sidAdmin : '') . '" target="_blank"><span>🏆</span> Classifica live ↗</a><div class="sp"></div>';
+    echo '<div class="live">';
+    if ($riga !== null) {
+        echo '<span class="stato' . ($aperto ? '' : ' chiuso') . '">' . ($aperto ? 'Sessione aperta' : 'Sessione chiusa') . '</span>'
+           . '<br>fino al ' . date('d/m H:i', strtotime((string) $riga['scade_il']));
+    } else {
+        echo '<span class="stato chiuso">Nessuna sessione</span>';
+    }
+    echo '</div>';
     echo '<form method="post"><input type="hidden" name="csrf" value="' . $e($csrf) . '"><button type="submit" name="azione" value="logout">🚪 Esci</button></form>';
     echo '</nav><main class="contenuto"><h1>' . $e($titolo) . '</h1>';
     if ($flash) {

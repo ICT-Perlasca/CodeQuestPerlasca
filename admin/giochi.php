@@ -14,7 +14,9 @@ $pdo = db();
     $st = $pdo->prepare(
         "SELECT m.codice, m.titolo, COUNT(p.partecipante_id) AS giocatori, COALESCE(MAX(p.punti), 0) AS record,
                 COALESCE(AVG(p.punti), 0) AS media, COALESCE(AVG(p.tentativi), 0) AS tentativi, m.max_punti
-           FROM moduli m LEFT JOIN punteggi p ON p.modulo = m.codice
+           FROM moduli m
+           LEFT JOIN (SELECT pu.* FROM punteggi pu JOIN partecipanti pa ON pa.id = pu.partecipante_id WHERE pa.sessione_id = " . (int) $sidAdmin . ") p
+                  ON p.modulo = m.codice
           WHERE m.codice IN ($segnaposto)
           GROUP BY m.codice, m.titolo, m.max_punti, m.percorso_ordine
           ORDER BY m.percorso_ordine IS NULL, m.percorso_ordine, m.titolo"
@@ -44,10 +46,10 @@ if ($scelto !== '' && $scelto !== 'paperelle_coding') {
                FROM punteggi p
                JOIN partecipanti pa ON pa.id = p.partecipante_id
                LEFT JOIN registro r ON r.uuid = pa.uuid
-              WHERE p.modulo = ?
+              WHERE p.modulo = ? AND pa.sessione_id = ?
               ORDER BY p.punti DESC, p.updated_at ASC'
         );
-        $st->execute([$codice]);
+        $st->execute([$codice, $sidAdmin]);
         $righe = $st->fetchAll();
 
         // Binary Lights: i punti dipendono anche dalla velocita' -> fasce di punteggio.
@@ -91,26 +93,31 @@ if ($scelto === 'paperelle_coding') {
     // Duck Coding: tempi per livello e i piu' veloci (la tabella puo' mancare sui DB vecchi)
     $codegame = null;
     try {
-        $perLivello = $pdo->query(
-            'SELECT livello, COUNT(*) AS aperti, COUNT(ms) AS risolti, AVG(ms) AS media, MIN(ms) AS migliore,
-                    AVG(esecuzioni) AS esecuzioni, AVG(punti) AS punti
-               FROM codegame_tempi GROUP BY livello'
-        )->fetchAll(PDO::FETCH_UNIQUE);
+        $perLivello = $pdo->prepare(
+            'SELECT t.livello, COUNT(*) AS aperti, COUNT(t.ms) AS risolti, AVG(t.ms) AS media, MIN(t.ms) AS migliore,
+                    AVG(t.esecuzioni) AS esecuzioni, AVG(t.punti) AS punti
+               FROM codegame_tempi t JOIN partecipanti p ON p.id = t.partecipante_id
+              WHERE p.sessione_id = ? GROUP BY t.livello'
+        );
+        $perLivello->execute([$sidAdmin]);
+        $perLivello = $perLivello->fetchAll(PDO::FETCH_UNIQUE);
         $codegame = ['livelli' => [], 'top' => []];
         foreach (codegame_livelli() as $n => $l) {
             [$mediaPunti] = codegame_media_ms($pdo, $n);
             $codegame['livelli'][$n] = ['titolo' => $l['titolo'], 'media_punti' => $mediaPunti] + ($perLivello[$n] ?? []);
         }
-        $codegame['top'] = $pdo->query(
+        $top = $pdo->prepare(
             'SELECT p.nickname, r.nome, COUNT(t.ms) AS risolti, SUM(t.ms) AS tempo, SUM(t.punti) AS punti
                FROM codegame_tempi t
                JOIN partecipanti p ON p.id = t.partecipante_id
                LEFT JOIN registro r ON r.uuid = p.uuid
-              WHERE t.ms IS NOT NULL
+              WHERE t.ms IS NOT NULL AND p.sessione_id = ?
               GROUP BY p.id, p.nickname, r.nome
               ORDER BY risolti DESC, punti DESC, tempo ASC
               LIMIT 15'
-        )->fetchAll();
+        );
+        $top->execute([$sidAdmin]);
+        $codegame['top'] = $top->fetchAll();
     } catch (PDOException $ex) {
         error_log('[openday] codegame_tempi: ' . $ex->getMessage());
     }

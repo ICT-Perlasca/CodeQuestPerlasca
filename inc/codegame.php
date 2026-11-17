@@ -330,14 +330,16 @@ function codegame_max_punti(): int
  * Tempo medio di un livello in ms. Media "prudente": ai tempi reali si
  * aggiungono CODEGAME_PESO_RIF tempi di riferimento, cosi' i primi che giocano
  * non vengono premiati o puniti da una media fatta su 1-2 persone.
+ * La media e' della sola sessione corrente: i tempi di una demo non influenzano le altre.
  */
 function codegame_media_ms(PDO $pdo, int $livello, ?int $escludiId = null): array
 {
     $st = $pdo->prepare(
-        'SELECT COUNT(*) AS n, COALESCE(SUM(ms), 0) AS somma FROM codegame_tempi
-          WHERE livello = ? AND ms IS NOT NULL AND partecipante_id <> ?'
+        'SELECT COUNT(*) AS n, COALESCE(SUM(t.ms), 0) AS somma
+           FROM codegame_tempi t JOIN partecipanti p ON p.id = t.partecipante_id
+          WHERE p.sessione_id = ? AND t.livello = ? AND t.ms IS NOT NULL AND t.partecipante_id <> ?'
     );
-    $st->execute([$livello, $escludiId ?? 0]);
+    $st->execute([sessione_id_corrente() ?? 0, $livello, $escludiId ?? 0]);
     $r = $st->fetch();
     $rifMs = codegame_livelli()[$livello]['rif'] * 1000;
     $n = (int) $r['n'];

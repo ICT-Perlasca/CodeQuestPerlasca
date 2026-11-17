@@ -10,14 +10,14 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/db.php';
 
-const DIPLOMA_TOKEN_MINUTI = 10;      // predefinito, modificabile da admin (impostazione `diploma_qr_minuti`)
+const DIPLOMA_TOKEN_MINUTI = 10;      // predefinito, modificabile per ogni sessione da admin (`sessioni.qr_minuti`)
 const DIPLOMA_TOKEN_MINUTI_MAX = 1440;
 
-/** Validita' del QR code in minuti: impostazione admin, altrimenti DIPLOMA_TOKEN_MINUTI. */
+/** Validita' del QR code in minuti: quella della sessione corrente, altrimenti DIPLOMA_TOKEN_MINUTI. */
 function diploma_token_minuti(): int
 {
-    $v = db()->query("SELECT valore FROM impostazioni WHERE chiave = 'diploma_qr_minuti'")->fetchColumn();
-    $m = is_string($v) && ctype_digit($v) ? (int) $v : DIPLOMA_TOKEN_MINUTI;
+    $v = sessione_corrente()['qr_minuti'] ?? null;
+    $m = $v !== null ? (int) $v : DIPLOMA_TOKEN_MINUTI;
     return $m >= 1 && $m <= DIPLOMA_TOKEN_MINUTI_MAX ? $m : DIPLOMA_TOKEN_MINUTI;
 }
 
@@ -27,13 +27,13 @@ const ATTESTATO_PRIMO_NUMERO = 1287;
 
 /**
  * Scadenza del download del diploma: quella impostata in admin/sessione.php
- * (`diploma_scadenza`), altrimenti la mezzanotte che chiude il giorno dopo
+ * (`sessioni.diploma_scade_il`), altrimenti la mezzanotte che chiude il giorno dopo
  * l'evento (00:00 di due giorni dopo la data della sessione).
  * Indipendente dalla scadenza del login.
  */
 function diploma_scadenza(): int
 {
-    $v = db()->query("SELECT valore FROM impostazioni WHERE chiave = 'diploma_scadenza'")->fetchColumn();
+    $v = sessione_corrente()['diploma_scade_il'] ?? null;
     $t = is_string($v) && $v !== '' ? strtotime($v) : false;
     return $t !== false ? $t : diploma_scadenza_automatica();
 }
@@ -122,12 +122,13 @@ function dati_diploma(int $id): ?array
 {
     $pdo = db();
 
-    $st = $pdo->prepare('SELECT id, nickname, avatar, punti_totali, updated_at FROM partecipanti WHERE id = ? AND nascosto = 0');
+    $st = $pdo->prepare('SELECT id, sessione_id, nickname, avatar, punti_totali, updated_at FROM partecipanti WHERE id = ? AND nascosto = 0');
     $st->execute([$id]);
     $p = $st->fetch();
     if ($p === false) {
         return null;
     }
+    imposta_sessione((int) $p['sessione_id']); // testi, data e demo sono quelli della sessione del partecipante
 
     $st = $pdo->prepare(
         'SELECT m.titolo, p.punti
@@ -143,12 +144,12 @@ function dati_diploma(int $id): ?array
     if ($p['punti_totali'] > 0) {
         $st = $pdo->prepare(
             'SELECT COUNT(*) FROM partecipanti
-              WHERE nascosto = 0
+              WHERE sessione_id = :sid AND nascosto = 0
                 AND (punti_totali > :punti
                      OR (punti_totali = :punti2 AND (updated_at < :agg OR (updated_at = :agg2 AND id < :id))))'
         );
         $st->execute([
-            'punti' => $p['punti_totali'], 'punti2' => $p['punti_totali'],
+            'sid' => $p['sessione_id'], 'punti' => $p['punti_totali'], 'punti2' => $p['punti_totali'],
             'agg' => $p['updated_at'], 'agg2' => $p['updated_at'], 'id' => $id,
         ]);
         $p['posizione'] = 1 + (int) $st->fetchColumn();
@@ -159,7 +160,8 @@ function dati_diploma(int $id): ?array
     $p['ora_classifica'] = date('H:i');
 
     $p['data_evento'] = data_evento();
-    $p['codice'] = date('Y') . '/' . numero_attestato($id);
+    // la demo non consuma numeri d'attestato: il registro numera solo quelli veri
+    $p['codice'] = sessione_demo() ? 'DEMO' : date('Y') . '/' . numero_attestato($id);
     return $p;
 }
 
@@ -170,6 +172,9 @@ function dati_diploma(int $id): ?array
  */
 function registra_diploma(int $partecipanteId, ?string $nome): void
 {
+    if (sessione_demo()) {
+        return; // le sessioni demo non entrano nel registro permanente
+    }
     db()->prepare(
         'INSERT INTO registro (uuid, nickname, nome, punti, arrivato_il, diploma_il)
          SELECT uuid, nickname, :nome, punti_totali, created_at, :ora FROM partecipanti WHERE id = :id

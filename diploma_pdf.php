@@ -31,10 +31,6 @@ function errore_pagina(int $codice, string $titolo, string $messaggio): never
 
 $token = (string) ($_GET['t'] ?? '');
 
-if (!diploma_aperto()) {
-    errore_pagina(403, 'Download chiuso', DIPLOMA_CHIUSO_MSG);
-}
-
 if ($token !== '') {
     if (preg_match('/^[0-9a-f]{32}$/', $token) !== 1) {
         errore_pagina(404, 'Link non valido', 'Inquadra di nuovo il QR code dalla pagina del diploma.');
@@ -42,7 +38,10 @@ if ($token !== '') {
     $st = db()->prepare('SELECT partecipante_id, nome FROM diplomi_token WHERE token = ? AND scade_il > ?');
     $st->execute([$token, date('Y-m-d H:i:s')]);
     $riga = $st->fetch();
-    $p = $riga ? dati_diploma((int) $riga['partecipante_id']) : null;
+    $p = $riga ? dati_diploma((int) $riga['partecipante_id']) : null; // imposta anche la sessione del partecipante
+    if ($p !== null && !diploma_aperto()) {
+        errore_pagina(403, 'Download chiuso', DIPLOMA_CHIUSO_MSG);
+    }
     if ($p === null) {
         errore_pagina(410, 'QR code scaduto',
             'Il link vale ' . diploma_token_minuti() . ' minuti. Genera un nuovo QR code dalla pagina del diploma e inquadralo di nuovo.');
@@ -51,13 +50,16 @@ if ($token !== '') {
 }
 
 avvia_sessione();
-if (empty($_SESSION['ospite']) || empty($_SESSION['uuid'])) {
+if (!ospite_collegato() || empty($_SESSION['uuid'])) {
     header('Location: index.php');
     exit;
 }
+if (!diploma_aperto()) {
+    errore_pagina(403, 'Download chiuso', DIPLOMA_CHIUSO_MSG);
+}
 
-$st = db()->prepare('SELECT id FROM partecipanti WHERE uuid = ?');
-$st->execute([$_SESSION['uuid']]);
+$st = db()->prepare('SELECT id FROM partecipanti WHERE sessione_id = ? AND uuid = ?');
+$st->execute([sessione_id_corrente(), $_SESSION['uuid']]);
 $id = $st->fetchColumn();
 $p = $id !== false ? dati_diploma((int) $id) : null;
 if ($p === null) {

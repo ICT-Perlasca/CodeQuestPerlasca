@@ -36,8 +36,8 @@ if (stato_gioco('paperelle_coding') !== 'attivo') {
 
 $livelli = codegame_livelli_attivi(); // Open Day: solo i primi livelli, laboratorio: tutti
 $pdo = db();
-$st = $pdo->prepare('SELECT id FROM partecipanti WHERE uuid = ?');
-$st->execute([$uuid]);
+$st = $pdo->prepare('SELECT id FROM partecipanti WHERE sessione_id = ? AND uuid = ?');
+$st->execute([sessione_id_corrente(), $uuid]);
 $pid = $st->fetchColumn();
 if ($pid === false) {
     json_errore(404, 'Profilo non trovato: reinserisci il nickname');

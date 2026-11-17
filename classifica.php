@@ -7,6 +7,10 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/inc/db.php'; // carica anche config.php
 
+// ?s=<id> sceglie la sessione (con piu' sessioni attive: una classifica per ogni proiettore)
+$sid = sessione_pubblica();
+$sessione = sessione_attivita();
+
 $cartella = rtrim(dirname($_SERVER['SCRIPT_NAME'] ?? '/'), '/');
 $urlGioco = ($_SERVER['HTTP_HOST'] ?? 'localhost') . $cartella;
 $e = static fn(string $s): string => htmlspecialchars($s, ENT_QUOTES);
@@ -133,7 +137,7 @@ $e = static fn(string $s): string => htmlspecialchars($s, ENT_QUOTES);
   <header>
     <div>
       <h1>🏆 Classifica <span>Junior Hacker</span></h1>
-      <p>Open Day Informatica e Telecomunicazioni · IIS "Giacomo Perlasca"</p>
+      <p><?= $e($sessione['etichetta']) ?> Informatica e Telecomunicazioni · IIS "Giacomo Perlasca"<?= $sessione['demo'] ? ' · <b>DEMO</b>' : '' ?></p>
     </div>
     <div class="live">
       <span class="badge" id="stato"><span class="dot"></span><span id="stato-testo">LIVE</span></span>
@@ -157,6 +161,8 @@ $e = static fn(string $s): string => htmlspecialchars($s, ENT_QUOTES);
       <div class="box unisciti">
         <p>Gioca anche tu! Apri</p>
         <span class="url"><?= $e($urlGioco) ?></span>
+        <p>utente</p>
+        <span class="pwd"><?= $e(ospite_utente()) ?></span>
         <p>password</p>
         <span class="pwd"><?= $e(ospite_pass()) ?></span>
       </div>
@@ -280,7 +286,7 @@ function statoConnessione(online) {
 
 async function aggiorna() {
   try {
-    const res = await fetch('api/get_leaderboard.php', { cache: 'no-cache' });
+    const res = await fetch('api/get_leaderboard.php?s=<?= (int) $sid ?>', { cache: 'no-cache' });
     if (!res.ok) throw new Error(res.status);
     const testo = await res.text();
     if (testo !== ultimoJson) {

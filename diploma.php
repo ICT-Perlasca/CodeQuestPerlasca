@@ -8,13 +8,13 @@ declare(strict_types=1);
 require_once __DIR__ . '/inc/diploma.php';
 
 avvia_sessione();
-if (empty($_SESSION['ospite']) || empty($_SESSION['uuid'])) {
+if (!ospite_collegato() || empty($_SESSION['uuid'])) {
     header('Location: index.php');
     exit;
 }
 
-$st = db()->prepare('SELECT id FROM partecipanti WHERE uuid = ?');
-$st->execute([$_SESSION['uuid']]);
+$st = db()->prepare('SELECT id FROM partecipanti WHERE sessione_id = ? AND uuid = ?');
+$st->execute([sessione_id_corrente(), $_SESSION['uuid']]);
 $id = $st->fetchColumn();
 if ($id === false) {
     header('Location: index.php'); // rimosso dall'admin: rifa' l'onboarding
@@ -280,7 +280,7 @@ $('btn-qr').addEventListener('click', async () => {
       body: JSON.stringify({ nome }),
     });
     const data = await res.json().catch(() => ({}));
-    if (res.status === 401) { location.href = 'login.php?user=openday'; return; }
+    if (res.status === 401) { location.href = 'login.php'; return; }
     if (!res.ok || !data.ok) throw new Error(data.errore || `Errore ${res.status}`);
 
     const url = new URL('diploma_pdf.php?t=' + data.token, location.href).href;

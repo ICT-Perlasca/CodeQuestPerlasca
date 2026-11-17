@@ -7,15 +7,15 @@ declare(strict_types=1);
 require_once __DIR__ . '/inc/db.php';
 
 avvia_sessione();
-if (empty($_SESSION['ospite'])) {
-    header('Location: login.php?user=' . urlencode(OSPITE_USER));
+if (!ospite_collegato()) {
+    header('Location: login.php');
     exit;
 }
 
 $profilo = null;
 if (isset($_SESSION['uuid'])) {
-    $st = db()->prepare('SELECT id, uuid, nickname, avatar, punti_totali, nascosto, updated_at FROM partecipanti WHERE uuid = ?');
-    $st->execute([$_SESSION['uuid']]);
+    $st = db()->prepare('SELECT id, uuid, nickname, avatar, punti_totali, nascosto, updated_at FROM partecipanti WHERE sessione_id = ? AND uuid = ?');
+    $st->execute([sessione_id_corrente(), $_SESSION['uuid']]);
     $profilo = $st->fetch() ?: null;
     if ($profilo === null) {
         unset($_SESSION['uuid']); // rimosso dall'admin: rifa' l'onboarding
@@ -45,10 +45,10 @@ if ($profilo) {
 
     if ((int) $profilo['punti_totali'] > 0 && !(int) $profilo['nascosto']) {
         $st = $pdo->prepare(
-            'SELECT COUNT(*) + 1 FROM partecipanti WHERE nascosto = 0 AND punti_totali > 0 AND (punti_totali > ?
+            'SELECT COUNT(*) + 1 FROM partecipanti WHERE sessione_id = ? AND nascosto = 0 AND punti_totali > 0 AND (punti_totali > ?
                OR (punti_totali = ? AND (updated_at < ? OR (updated_at = ? AND id < ?))))'
         );
-        $st->execute([$profilo['punti_totali'], $profilo['punti_totali'], $profilo['updated_at'], $profilo['updated_at'], $profilo['id']]);
+        $st->execute([sessione_id_corrente(), $profilo['punti_totali'], $profilo['punti_totali'], $profilo['updated_at'], $profilo['updated_at'], $profilo['id']]);
         $posizione = (int) $st->fetchColumn();
     }
 }
@@ -248,6 +248,9 @@ $e = static fn(string $s): string => htmlspecialchars($s, ENT_QUOTES);
       <span>Il tuo diploma &amp; la classifica<small>Scarica l'attestato Junior Hacker</small></span>
     </a>
   </section>
+  <form method="post" action="logout.php" style="text-align:center;margin:8px 0 24px" onsubmit="return confirm('Vuoi uscire? Per rientrare servono utente e password della sessione.')">
+    <button class="btn secondario" type="submit">🚪 Esci</button>
+  </form>
 </main>
 
 <!-- INTRODUZIONE: due slide che spiegano come funzionano le attivita' -->
@@ -293,6 +296,14 @@ const storage = {
   get(k) { try { return localStorage.getItem(k); } catch { return null; } },
   set(k, v) { try { localStorage.setItem(k, v); } catch { /* ignora */ } },
 };
+
+// Stesso telefono in una sessione diversa (prima la demo, poi l'attivita'): serve un profilo nuovo.
+// Senza questo, l'identificativo della demo resterebbe e i progressi dei giochi (legati a lui) sembrerebbero gia' fatti.
+const SESSIONE_ID = '<?= (int) sessione_id_corrente() ?>';
+if (storage.get('od_sessione') !== SESSIONE_ID) {
+  try { localStorage.removeItem('od_uuid'); } catch { /* ignora */ }
+  storage.set('od_sessione', SESSIONE_ID);
+}
 
 // UUIDv4 anche su http:// in LAN, dove crypto.randomUUID non esiste
 function uuidv4() {
@@ -365,7 +376,7 @@ async function registra(uuid, nickname, avatarScelto) {
     body: JSON.stringify({ uuid, nickname, avatar: avatarScelto }),
   });
   const data = await res.json().catch(() => ({}));
-  if (res.status === 401) { location.href = 'login.php?user=openday'; return null; }
+  if (res.status === 401) { location.href = 'login.php'; return null; }
   if (!res.ok || !data.ok) throw new Error(data.errore || `Errore ${res.status}`);
   storage.set('od_uuid', uuid);
   storage.set('od_nick', nickname);

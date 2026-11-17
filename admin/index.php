@@ -5,11 +5,14 @@ declare(strict_types=1);
 require_once __DIR__ . '/_base.php';
 
 $pdo = db();
-$stat = $pdo->query(
+// numeri della sessione scelta nel menu (admin/_base.php); registro e fasce orarie sono invece permanenti, di tutte le giornate
+$stat = $pdo->prepare(
     'SELECT COUNT(*) AS totale, COALESCE(SUM(nascosto), 0) AS nascosti, COALESCE(SUM(punti_totali > 0), 0) AS giocanti,
             COALESCE(AVG(CASE WHEN punti_totali > 0 THEN punti_totali END), 0) AS media
-       FROM partecipanti'
-)->fetch();
+       FROM partecipanti WHERE sessione_id = ?'
+);
+$stat->execute([$sidAdmin]);
+$stat = $stat->fetch();
 $diplomi = 0;
 $fasce = [];
 $maxArrivi = 1;
@@ -26,10 +29,12 @@ try { // la tabella registro puo' mancare sui DB vecchi
 } catch (PDOException $ex) {
     error_log('[openday] registro: ' . $ex->getMessage());
 }
-$top = $pdo->query(
-    'SELECT nickname, avatar, punti_totali FROM partecipanti WHERE nascosto = 0 AND punti_totali > 0
+$top = $pdo->prepare(
+    'SELECT nickname, avatar, punti_totali FROM partecipanti WHERE sessione_id = ? AND nascosto = 0 AND punti_totali > 0
       ORDER BY punti_totali DESC, updated_at ASC, id ASC LIMIT 5'
-)->fetchAll();
+);
+$top->execute([$sidAdmin]);
+$top = $top->fetchAll();
 
 $sessione = sessione_attivita();
 $conteggio = ['attivo' => 0, 'disabilitato' => 0, 'nascosto' => 0];
@@ -37,7 +42,7 @@ foreach (array_keys(GIOCHI) as $codice) {
     $conteggio[stato_gioco($codice)]++;
 }
 $aperto = evento_aperto();
-$scadenza = strtotime((string) ($pdo->query("SELECT valore FROM impostazioni WHERE chiave = 'scadenza'")->fetchColumn() ?: ''));
+$scadenza = strtotime((string) (sessione_corrente()['scade_il'] ?? ''));
 
 admin_inizio('index.php', 'Panoramica');
 ?>
@@ -50,10 +55,10 @@ admin_inizio('index.php', 'Panoramica');
 
 <div class="griglia">
   <section class="card">
-    <h2>Evento <span class="stato <?= $aperto ? '' : 'chiuso' ?>"><?= $aperto ? 'aperto' : 'chiuso' ?></span></h2>
-    <p class="muted" style="margin:0 0 10px"><?= $e($sessione['etichetta']) ?> del <?= date('d/m/Y', $sessione['data']) ?>
-      <?= $scadenza ? '· login fino al ' . date('d/m H:i', $scadenza) : '' ?></p>
-    <a class="btn" href="sessione.php">Modifica sessione →</a>
+    <h2><?= $e($sessione['nome']) ?> <span class="stato <?= $aperto ? '' : 'chiuso' ?>"><?= $aperto ? 'aperta' : 'chiusa' ?></span></h2>
+    <p class="muted" style="margin:0 0 10px"><?= $e($sessione['etichetta']) ?><?= $sessione['demo'] ? ' (demo)' : '' ?> del <?= date('d/m/Y', $sessione['data']) ?>
+      <?= $scadenza ? '· login fino al ' . date('d/m H:i', $scadenza) : '' ?> · utente <code><?= $e(ospite_utente()) ?></code> · password <code><?= $e(ospite_pass()) ?></code></p>
+    <a class="btn" href="sessione.php">Sessioni →</a>
   </section>
   <section class="card">
     <h2>Giochi</h2>

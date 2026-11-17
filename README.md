@@ -9,7 +9,7 @@ Web app PHP/MySQL per l'Open Day di Informatica: gli ospiti accedono con un acco
 - Minigiochi: **Duck Coding** (blocchi Blockly, 28 livelli), **Binary Lights**, **Porte logiche**, **Modifica il gioco**, **Hack the Web(site)**
 - Attestato PDF (FPDF) con QR valido 10 minuti; i primi 3 in classifica ricevono anche un certificato di merito
 - Registro permanente (nomi, arrivi per turno, numero attestato, export CSV)
-- Pannello `admin/` (pagine Panoramica, Sessione, Giochi, Partecipanti, Registro, Sistema): sessione (Open Day / Laboratori), statistiche per gioco, reset
+- Pannello `admin/` (pagine Panoramica, Sessioni, Giochi, Partecipanti, Registro, Sistema): sessione (Open Day / Laboratori), statistiche per gioco, reset
 
 ## Documentazione
 
@@ -26,7 +26,8 @@ Web app PHP/MySQL per l'Open Day di Informatica: gli ospiti accedono con un acco
 | `api/` | endpoint JSON |
 | `inc/` | configurazione, DB, librerie (protetta da `.htaccess`) |
 | `assets/` | JS/CSS, librerie copiate in locale (Blockly, qrcode) |
-| `schema.sql` | schema del database |
+| `schema.sql` | schema del database (DB nuovo) |
+| `migrazione-sessioni.sql` | da eseguire una volta sui DB già in uso, per passare alle sessioni multiple |
 | `dev/xampp.sh` | avvio dell'ambiente locale con XAMPP |
 
 Nessuna dipendenza da CDN: l'evento può girare in LAN senza internet.
@@ -45,7 +46,8 @@ Nessuna dipendenza da CDN: l'evento può girare in LAN senza internet.
    ```
 2. **Non** caricare `config.local.php`.
 3. Importa `schema.sql`. Su DB già esistenti le modifiche vanno applicate a mano (`ALTER`/`INSERT`): `CREATE TABLE IF NOT EXISTS` non aggiorna le tabelle. Le tabelle `registro` e `blacklist` sono permanenti e non vanno mai cancellate.
-4. Al primo accesso ad `admin/` crea la sessione (pagina Sessione): giornata, ora di fine, password ospiti. Finché non lo fai il login ospite resta chiuso; a fine sessione va ricreata, con una nuova password.
+4. Al primo accesso ad `admin/` crea una sessione (pagina Sessioni): nome, giornata, ora di fine, password ospiti. Finché non ne esiste una il login ospite resta chiuso. Si possono tenere **più sessioni aperte insieme** (es. una *demo* per gli studenti tutor e quelle vere): la password scritta al login decide in quale si entra; classifica, partecipanti e statistiche sono separati per sessione. Una sessione *demo* non scrive nel registro e non consuma numeri d'attestato. Per la LIM: `classifica.php?s=<numero sessione>`.
+   Su un DB già in uso esegui prima `migrazione-sessioni.sql` (una volta sola): la sessione di prima diventa la n. 1.
 
 ## Note
 

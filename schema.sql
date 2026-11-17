@@ -11,20 +11,16 @@ DROP TABLE IF EXISTS codegame_tempi;
 DROP TABLE IF EXISTS diplomi_token;
 DROP TABLE IF EXISTS punteggi;
 DROP TABLE IF EXISTS partecipanti;
+DROP TABLE IF EXISTS sessioni;
 DROP TABLE IF EXISTS moduli;
 DROP TABLE IF EXISTS impostazioni;
 
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- ---------------------------------------------------------------------
--- Impostazioni evento (modificabili da phpMyAdmin o da admin.php)
---   evento_attivo : '1' = login aperto, '0' = chiuso manualmente
---   scadenza      : data/ora (Europe/Rome) oltre la quale il login ospite
---                   e il salvataggio punteggi vengono rifiutati
---   sessione_*    : configurazione della giornata da admin.php ("Sessione"):
---                   tipo ('openday' | 'laboratori'), data (AAAA-MM-GG), titolo
---                   e descrizione dell'attivita'. Cambiano i testi dei PDF.
---                   Se mancano valgono Open Day + giorno della scadenza.
+-- Impostazioni globali (chiave/valore): stato dei giochi `gioco_<codice>`
+-- ('attivo' | 'disabilitato' | 'nascosto'), impostato da admin/giochi.php.
+-- Le impostazioni di ogni giornata stanno in `sessioni`.
 -- ---------------------------------------------------------------------
 CREATE TABLE impostazioni (
   chiave  VARCHAR(50)  NOT NULL,
@@ -32,13 +28,39 @@ CREATE TABLE impostazioni (
   PRIMARY KEY (chiave)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT INTO impostazioni (chiave, valore) VALUES
-  ('evento_attivo', '1'),
-  ('scadenza',      '2026-12-13 19:00:00'),   -- <-- aggiornare con la data dell'Open Day
-  ('sessione_tipo', 'openday'),
-  ('sessione_data', '2026-12-13'),
-  ('sessione_titolo', ''),
-  ('sessione_descrizione', '');
+-- ---------------------------------------------------------------------
+-- Sessioni di gioco: possono essere attive piu' sessioni insieme (ad es. una
+-- "demo" per far provare gli studenti tutor e quelle vere dell'attivita').
+-- Ogni sessione ha la sua password: e' la password che gli ospiti scrivono al
+-- login a decidere in quale sessione entrano. Classifica e partecipanti sono
+-- separati per sessione. Si creano da admin/sessione.php.
+--   nome       : etichetta per lo staff ("Demo studenti", "Open Day mattina")
+--   utente     : nome utente del login ospite (con la password sceglie la sessione)
+--   tipo       : 'openday' | 'laboratori' (TIPI_GIORNATA in inc/db.php)
+--   scade_il   : oltre questa data/ora il login e il salvataggio punti sono rifiutati
+--   attiva     : 0 = chiusa a mano
+--   demo       : 1 = prova: niente registro permanente ne' numero d'attestato
+--   diploma_scade_il : fine del download attestati (NULL = automatica, 2 giorni dopo la data)
+--   qr_minuti  : validita' del QR code del diploma (NULL = predefinita)
+-- ---------------------------------------------------------------------
+CREATE TABLE sessioni (
+  id                INT UNSIGNED  NOT NULL AUTO_INCREMENT,
+  nome              VARCHAR(60)   NOT NULL,
+  tipo              VARCHAR(20)   NOT NULL DEFAULT 'openday',
+  data              DATE          NOT NULL,
+  titolo            VARCHAR(60)   NOT NULL DEFAULT '',
+  descrizione       VARCHAR(200)  NOT NULL DEFAULT '',
+  utente            VARCHAR(30)   NOT NULL DEFAULT 'openday',
+  password          VARCHAR(30)   NOT NULL,
+  scade_il          DATETIME      NOT NULL,
+  attiva            TINYINT(1)    NOT NULL DEFAULT 1,
+  demo              TINYINT(1)    NOT NULL DEFAULT 0,
+  diploma_scade_il  DATETIME      NULL,
+  qr_minuti         SMALLINT UNSIGNED NULL,
+  creata_il         DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_password (password)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------------------------------
 -- Catalogo moduli: max_punti e' il tetto lato server (anti-cheat)
@@ -74,6 +96,7 @@ INSERT INTO moduli (codice, titolo, max_punti, percorso_ordine) VALUES
 -- ---------------------------------------------------------------------
 CREATE TABLE partecipanti (
   id            INT UNSIGNED  NOT NULL AUTO_INCREMENT,
+  sessione_id   INT UNSIGNED  NOT NULL,
   uuid          CHAR(36)      NOT NULL,
   nickname      VARCHAR(16)   NOT NULL,
   avatar        VARCHAR(30)   NOT NULL,
@@ -82,10 +105,12 @@ CREATE TABLE partecipanti (
   created_at    DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at    DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
-  UNIQUE KEY uq_uuid (uuid),
-  UNIQUE KEY uq_nickname (nickname),               -- collation _ci: "Neo" = "neo"
-  KEY idx_classifica (nascosto, punti_totali, updated_at),
-  KEY idx_ultimi (created_at)
+  UNIQUE KEY uq_uuid (sessione_id, uuid),          -- lo stesso telefono puo' stare in sessioni diverse
+  UNIQUE KEY uq_nickname (sessione_id, nickname),  -- collation _ci: "Neo" = "neo"; unico solo dentro la sessione
+  KEY idx_classifica (sessione_id, nascosto, punti_totali, updated_at),
+  KEY idx_ultimi (created_at),
+  CONSTRAINT fk_partecipanti_sessione FOREIGN KEY (sessione_id)
+    REFERENCES sessioni (id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---------------------------------------------------------------------

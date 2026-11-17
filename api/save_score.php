@@ -60,8 +60,8 @@ if ($maxPunti === false) {
 }
 $punti = min($punti, max_punti_sessione($modulo, (int) $maxPunti)); // Binary Lights: 5 o 12 round secondo la sessione
 
-$st = $pdo->prepare('SELECT id FROM partecipanti WHERE uuid = ? FOR UPDATE');
-$st->execute([$uuid]);
+$st = $pdo->prepare('SELECT id FROM partecipanti WHERE sessione_id = ? AND uuid = ? FOR UPDATE');
+$st->execute([sessione_id_corrente(), $uuid]);
 $partecipanteId = $st->fetchColumn();
 if ($partecipanteId === false) {
     $pdo->rollBack();

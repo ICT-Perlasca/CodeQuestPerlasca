@@ -53,57 +53,131 @@ function avvia_sessione(): void
     session_start();
 }
 
-/** Password degli ospiti: quella scelta in admin/Sessione (`ospite_pass`), altrimenti OSPITE_PASS di config.php. */
+/*
+ * SESSIONI. Possono essere attive piu' sessioni insieme (tabella `sessioni`): ogni ospite entra in
+ * quella la cui password scrive al login (login.php) e il suo id resta in $_SESSION['sessione_id'].
+ * Tutte le funzioni qui sotto lavorano sulla "sessione corrente":
+ *   1. quella impostata con imposta_sessione() (admin, classifica pubblica, diploma da QR),
+ *   2. altrimenti quella dell'ospite collegato ($_SESSION['sessione_id']).
+ * Senza nessuna delle due valgono i valori dell'Open Day classico.
+ */
+
+/** Imposta (o con null toglie) la sessione corrente a mano, prima del cookie dell'ospite. */
+function imposta_sessione(?int $id): void
+{
+    $GLOBALS['openday_sessione_id'] = $id;
+}
+
+function sessione_id_corrente(): ?int
+{
+    $id = $GLOBALS['openday_sessione_id'] ?? ($_SESSION['sessione_id'] ?? null);
+    return is_int($id) || (is_string($id) && ctype_digit($id)) ? (int) $id : null;
+}
+
+/** Riga di `sessioni` (null se non esiste). */
+function sessione_riga(int $id): ?array
+{
+    static $cache = [];
+    if (!array_key_exists($id, $cache)) {
+        $st = db()->prepare('SELECT * FROM sessioni WHERE id = ?');
+        $st->execute([$id]);
+        $cache[$id] = $st->fetch() ?: null;
+    }
+    return $cache[$id];
+}
+
+/** La riga della sessione corrente, null se non c'e'. */
+function sessione_corrente(): ?array
+{
+    $id = sessione_id_corrente();
+    return $id === null ? null : sessione_riga($id);
+}
+
+/** Stato di una sessione: 'attiva' (login aperto), 'scaduta' (passata l'ora di fine) o 'chiusa' (chiusa a mano). */
+function stato_sessione(array $riga): string
+{
+    if (strtotime((string) $riga['scade_il']) <= time()) {
+        return 'scaduta';
+    }
+    return (int) $riga['attiva'] === 1 ? 'attiva' : 'chiusa';
+}
+
+/** Tutte le sessioni, le piu' recenti prima. */
+function elenco_sessioni(): array
+{
+    return db()->query('SELECT * FROM sessioni ORDER BY id DESC')->fetchAll();
+}
+
+/**
+ * Sessione da mostrare quando nessuno ha scelto: la piu' recente tra quelle attive (le vere prima
+ * delle demo), altrimenti la piu' recente in assoluto. null se non esiste nessuna sessione.
+ */
+function sessione_predefinita(): ?int
+{
+    $migliore = null;
+    foreach (elenco_sessioni() as $r) {
+        $punti = (stato_sessione($r) === 'attiva' ? 2 : 0) + ((int) $r['demo'] === 0 ? 1 : 0);
+        if ($migliore === null || $punti > $migliore[0]) {
+            $migliore = [$punti, (int) $r['id']];
+        }
+    }
+    return $migliore[1] ?? null;
+}
+
+/**
+ * Sessione per le pagine pubbliche (classifica): ?s=<id> se indicato e valido, altrimenti quella
+ * dell'ospite collegato (se ha gia' il cookie, senza crearne uno), altrimenti sessione_predefinita().
+ * La imposta come corrente e ne restituisce l'id (null se non esiste nessuna sessione).
+ */
+function sessione_pubblica(): ?int
+{
+    $id = filter_var($_GET['s'] ?? null, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+    if ($id === false && isset($_COOKIE['OPENDAY'])) {
+        avvia_sessione();
+        $id = $_SESSION['sessione_id'] ?? false;
+        session_write_close();
+    }
+    if ($id === false || sessione_riga((int) $id) === null) {
+        $id = sessione_predefinita();
+    }
+    imposta_sessione($id === null ? null : (int) $id);
+    return $id === null ? null : (int) $id;
+}
+
+/** Nome utente del login ospite della sessione corrente (predefinito OSPITE_USER). */
+function ospite_utente(): string
+{
+    $u = (string) (sessione_corrente()['utente'] ?? '');
+    return $u !== '' ? $u : OSPITE_USER;
+}
+
+/** Password degli ospiti della sessione corrente. */
 function ospite_pass(): string
 {
-    static $pass = null;
-    if ($pass === null) {
-        $v = db()->query("SELECT valore FROM impostazioni WHERE chiave = 'ospite_pass'")->fetchColumn();
-        $pass = is_string($v) && $v !== '' ? $v : OSPITE_PASS;
-    }
-    return $pass;
+    return (string) (sessione_corrente()['password'] ?? '');
 }
 
-/** true se l'evento e' attivo e non ancora scaduto (flag + scadenza in `impostazioni`). */
+/** true se la sessione corrente e' in corso (non chiusa e non scaduta). */
 function evento_aperto(): bool
 {
-    static $aperto = null;
-    if ($aperto !== null) {
-        return $aperto;
-    }
-
-    $righe = db()
-        ->query("SELECT chiave, valore FROM impostazioni WHERE chiave IN ('evento_attivo', 'scadenza', 'sessione_creata')")
-        ->fetchAll(PDO::FETCH_KEY_PAIR);
-
-    $attivo   = ($righe['evento_attivo'] ?? '0') === '1';
-    $scadenza = isset($righe['scadenza']) ? strtotime($righe['scadenza']) : false;
-
-    // senza una sessione creata dall'admin il login resta chiuso
-    return $aperto = ($righe['sessione_creata'] ?? '') !== '' && $attivo && ($scadenza === false || time() < $scadenza);
+    $r = sessione_corrente();
+    return $r !== null && stato_sessione($r) === 'attiva';
 }
 
-/**
- * Stato della sessione di gioco:
- *   'nuova'   = l'admin non l'ha mai creata (primo avvio o schema reimportato)
- *   'scaduta' = e' passata l'ora di fine: va ricreata (impostazioni e password)
- *   'attiva'  = in corso
- * Il login ospite si apre solo con una sessione attiva (vedi evento_aperto()).
- */
-function sessione_stato(): string
+/** true se la sessione corrente e' una demo (prova): non scrive nel registro permanente. */
+function sessione_demo(): bool
 {
-    $righe = db()
-        ->query("SELECT chiave, valore FROM impostazioni WHERE chiave IN ('scadenza', 'sessione_creata')")
-        ->fetchAll(PDO::FETCH_KEY_PAIR);
-    if (($righe['sessione_creata'] ?? '') === '') {
-        return 'nuova';
-    }
-    $scadenza = isset($righe['scadenza']) ? strtotime($righe['scadenza']) : false;
-    return $scadenza !== false && time() >= $scadenza ? 'scaduta' : 'attiva';
+    return (int) (sessione_corrente()['demo'] ?? 0) === 1;
+}
+
+/** true se il visitatore ha fatto il login ospite in una sessione che esiste ancora. */
+function ospite_collegato(): bool
+{
+    return !empty($_SESSION['ospite']) && sessione_corrente() !== null;
 }
 
 /**
- * Tipi di giornata configurabili da admin.php ("Sessione"). Ogni tipo cambia i
+ * Tipi di giornata configurabili da admin/sessione.php. Ogni tipo cambia i
  * testi di attestato e certificato di merito (PDF e anteprima) e i titoli dell'app.
  *   etichetta  : nome della giornata nei titoli ("Open Day · 13 dicembre 2026")
  *   nel        : "all'Open Day" / "ai Laboratori Pomeridiani" nelle frasi
@@ -182,6 +256,11 @@ function stato_gioco(string $modulo): string
 /** Da chiamare in cima alle pagine dei giochi: se non e' attivo mostra un avviso e si ferma. */
 function richiedi_gioco_attivo(string $modulo): void
 {
+    // legge la sessione dell'ospite (quanti livelli, che giornata) e subito rilascia il lock del file di sessione
+    if (isset($_COOKIE['OPENDAY'])) {
+        avvia_sessione();
+        session_write_close();
+    }
     if (stato_gioco($modulo) === 'attivo') {
         return;
     }
@@ -202,36 +281,27 @@ function livelli_sessione(string $modulo): int
 }
 
 /**
- * La sessione configurata in admin.php (chiavi `sessione_*` in `impostazioni`,
- * nessuna colonna nuova). Valori di default = Open Day classico.
+ * La sessione corrente: tipo di giornata, data, titolo e descrizione (riga di `sessioni`)
+ * insieme ai parametri del tipo (TIPI_GIORNATA). Senza sessione valgono i valori dell'Open Day.
  *
- * @return array{tipo: string, data: int, titolo: string, descrizione: string,
+ * @return array{tipo: string, data: int, titolo: string, descrizione: string, nome: string, demo: bool,
  *               etichetta: string, nel: string, del: string, binario: string, file: string, attivita: string, merito: string,
  *               giochi: array{duck_livelli: int, binary_round: int, palla_missioni: int, porte_livelli: list<int>, hack_livelli: list<int>, durata: string}}
  */
 function sessione_attivita(): array
 {
-    static $s = null;
-    if ($s !== null) {
-        return $s;
-    }
-
-    $righe = db()
-        ->query("SELECT chiave, valore FROM impostazioni WHERE chiave IN ('sessione_tipo', 'sessione_data', 'sessione_titolo', 'sessione_descrizione', 'scadenza')")
-        ->fetchAll(PDO::FETCH_KEY_PAIR);
-
-    $tipo = $righe['sessione_tipo'] ?? 'openday';
+    $r = sessione_corrente();
+    $tipo = (string) ($r['tipo'] ?? 'openday');
     if (!isset(TIPI_GIORNATA[$tipo])) {
         $tipo = 'openday';
     }
-    // data dell'attivita'; se non configurata, il giorno della scadenza del login (comportamento precedente)
-    $data = strtotime((string) ($righe['sessione_data'] ?? '')) ?: strtotime((string) ($righe['scadenza'] ?? '')) ?: time();
-
-    return $s = TIPI_GIORNATA[$tipo] + [
+    return TIPI_GIORNATA[$tipo] + [
         'tipo'        => $tipo,
-        'data'        => $data,
-        'titolo'      => trim((string) ($righe['sessione_titolo'] ?? '')),
-        'descrizione' => trim((string) ($righe['sessione_descrizione'] ?? '')),
+        'data'        => $r ? (strtotime((string) $r['data']) ?: time()) : time(),
+        'titolo'      => trim((string) ($r['titolo'] ?? '')),
+        'descrizione' => trim((string) ($r['descrizione'] ?? '')),
+        'nome'        => (string) ($r['nome'] ?? ''),
+        'demo'        => (int) ($r['demo'] ?? 0) === 1,
     ];
 }
 
